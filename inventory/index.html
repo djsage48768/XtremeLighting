@@ -1,0 +1,5610 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <!-- =========================
+       HEAD
+       ========================= -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Xtreme Lighting – Customer Inventory (Touch)</title>
+  <!-- VERSION: CustomerInventory (Touch).html | v1.0.1 | Last Updated: 2026-02-02 -->
+
+  <!-- =========================
+       CSS (ORIGINAL LOOK)
+       ========================= -->
+  <style>
+:root{
+  --bg:#f6f7f9;
+  --panel:#ffffff;
+  --panel2:#f1f3f6;
+  --text:#111827;
+  --muted:#6b7280;
+  --accent:#2563eb;
+  --accent-soft:#e0e7ff;
+  --danger:#dc2626;
+  --ok:#16a34a;
+
+  --line:#e5e7eb;
+  --btn:#f9fafb;
+  --btn2:#f3f4f6;
+
+  --shadow: 0 4px 12px rgba(0,0,0,.08);
+  --shadow-strong: 0 18px 40px rgba(0,0,0,.18);
+
+  --radius:18px;
+  --pad:14px;
+  --tap:56px;
+  font-synthesis-weight:none;
+}
+
+/* --- Modal open scroll lock --- */
+body.modal-open{
+  overflow: hidden;
+}
+
+/* Helps prevent scroll chaining on iOS when a modal is open */
+body.modal-open .modal-backdrop{
+  overscroll-behavior: contain;
+}
+
+*{ box-sizing:border-box; }
+
+/* Hidden print container */
+#printCard{ display:none; }
+
+/* Print rules for 3x5 index card */
+@media print {
+  @page { size: 5in 3in; margin: 0.25in; }
+
+  html, body {
+    width: 3in;
+    height: 5in;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  header, main, .toast, .modal-backdrop, .kb-backdrop { display: none !important; }
+
+  #printCard {
+    display: block !important;
+    width: 100%;
+    height: 100%;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    color: #000;
+  }
+
+  #printCard .pc-title { font-weight: 900; font-size: 14pt; margin-bottom: 6pt; }
+  #printCard .pc-line { font-size: 11pt; margin-bottom: 4pt; }
+  #printCard .pc-section { margin-top: 6pt; }
+  #printCard ul { margin: 4pt 0 0 14pt; padding: 0; font-size: 10.5pt; }
+  #printCard li { margin-bottom: 3pt; }
+}
+
+body{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body { touch-action: manipulation; }
+
+/* -------- Header / Topbar -------- */
+header{
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+
+  position: sticky;
+  top:0;
+  z-index: 10;
+  background: rgba(255,255,255,.88);
+  backdrop-filter: blur(10px);
+  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 10px max(14px, env(safe-area-inset-left));
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar{
+  display:flex;
+  gap:14px;
+  align-items:flex-start;
+  justify-content:space-between;
+  max-width: 1200px;
+  margin:0 auto;
+}
+
+.brand{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  min-width: 220px;
+}
+.brand-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.brand-logo{
+  height:78px;
+  width:auto;
+  display:block;
+  border-radius:10px;
+}
+.brand .title{ font-weight:800; letter-spacing:.2px; font-size:16px; }
+.brand .sub{ color:var(--muted); font-size:12px; }
+.mobile-quick-actions{
+  display:none;
+  gap:6px;
+  margin-left:auto;
+}
+.mobile-quick-btn{
+  min-height: 40px;
+  width: 40px;
+  padding: 0;
+  border-radius: 12px;
+  font-size: 18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.actions{
+  flex: 1;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  align-items:stretch;
+  max-width: 720px;
+}
+.menu-toggle{
+  display:none;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 20px;
+  line-height: 1;
+}
+.action-toggles{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:8px;
+}
+.action-buttons{
+  display:grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap:8px;
+}
+
+/* -------- Chip -------- */
+.chip{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 12px;
+  border-radius:999px;
+  background: rgba(255,255,255,.9);
+  border:1px solid var(--line);
+  color:var(--text);
+  box-shadow: var(--shadow);
+  user-select:none;
+}
+.chip input[type="checkbox"]{ width:22px; height:22px; }
+
+/* -------- Buttons -------- */
+button{
+  border:1px solid var(--line);
+  background: var(--btn);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 12px 14px;
+  min-height: var(--tap);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  box-shadow: var(--shadow);
+  cursor:pointer;
+}
+button:hover{ background: var(--btn2); }
+button:active{ transform: translateY(1px); }
+button:disabled{
+  opacity: .55;
+  cursor: not-allowed;
+  transform:none;
+}
+
+.btn-accent{
+  background: var(--accent);
+  color:#fff;
+  border-color: var(--accent);
+}
+.btn-accent:hover{ filter: brightness(1.05); }
+
+.btn-ok{
+  background: var(--ok);
+  color:#fff;
+  border-color: var(--ok);
+}
+.btn-accent:hover,
+.btn-ok:hover{
+  filter: brightness(1.05);
+  color:#111827;
+}
+
+.btn-danger{
+  background:#fee2e2;
+  color:#991b1b;
+  border-color:#fecaca;
+}
+
+.btn-ghost{ background:#ffffff; }
+
+/* -------- Layout -------- */
+.container{
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px max(14px, env(safe-area-inset-right)) calc(120px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  display:grid;
+  grid-template-columns: 430px 1fr;
+  gap: 14px;
+}
+@media (max-width: 980px){
+  .container{ grid-template-columns: 1fr; }
+  header{ padding-bottom: 12px; }
+  .brand{ min-width: auto; }
+  .topbar{ flex-direction: column; }
+  .actions{ max-width: none; width: 100%; }
+  .action-toggles{ justify-content:flex-start; }
+  .action-buttons{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 520px){
+  .action-buttons{ grid-template-columns: 1fr; }
+}
+@media (max-width: 1024px){
+  .topbar{
+    flex-direction: column;
+    gap: 10px;
+  }
+  .brand{
+    width: 100%;
+  }
+  .brand-row{
+    align-items:flex-start;
+  }
+  .menu-toggle{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    margin-left:auto;
+  }
+  .actions{
+    width: 100%;
+    max-width: none;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .22s ease;
+  }
+  .actions.is-open{
+    max-height: 900px;
+  }
+  .action-toggles{
+    justify-content:flex-start;
+  }
+  .action-buttons{
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 760px){
+  .mobile-quick-actions{ display:flex; }
+}
+
+/* -------- Cards -------- */
+.card{
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+.card h2{ margin:0 0 10px; font-size: 16px; letter-spacing:.2px; }
+.customer-card{
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+}
+.customer-card{
+  display:flex;
+  flex-direction:column;
+}
+
+.save-pill{
+  display:inline-flex;
+  align-items:center;
+  flex-wrap: wrap;
+  gap:8px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:#f8fafc;
+  padding:6px 10px;
+  font-size:12px;
+  font-weight:800;
+  margin-bottom:10px;
+}
+.save-pill .dot{
+  width:8px;
+  height:8px;
+  border-radius:999px;
+  background:#94a3b8;
+}
+.save-pill.is-dirty{
+  border-color:#fecaca;
+  background:#fef2f2;
+  color:#991b1b;
+}
+.save-pill.is-dirty .dot{
+  background:#ef4444;
+}
+.save-pill-btn{
+  display:none;
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 900;
+  margin-left: 4px;
+}
+
+.view-only input[readonly],
+.view-only input[disabled],
+.view-only select[disabled]{
+  background:#f8fafc;
+  color:#374151;
+}
+.customer-preview-grid .field{
+  background:#f8fafc;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px;
+}
+.customer-edit-row #btnJobNotes{
+  width:100%;
+  justify-content:center;
+}
+@media (max-width: 760px){
+  .customer-block-session{ order:1; }
+  .customer-block-info{ order:2; }
+  .customer-block-hint{ order:3; }
+}
+@media (max-width: 760px){
+  .save-pill-btn{
+    min-height: 34px;
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+}
+
+/* -------- Text helpers -------- */
+.muted{ color: var(--muted); font-size: 13px; line-height: 1.35; }
+.small{ font-size: 12px; color: var(--muted); }
+
+/* -------- Forms -------- */
+.row{ display:flex; gap:10px; flex-wrap:wrap; }
+.field{ display:flex; flex-direction:column; gap:6px; flex: 1; min-width: 160px; }
+label{
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing:.2px;
+  white-space: normal;
+  line-height: 1.15;
+}
+
+@media (max-width: 1024px){
+  label{ font-size: 11px; }
+}
+
+input, select{
+  width:100%;
+  min-height: var(--tap);
+  padding: 12px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--text);
+  font-size: 16px;
+  outline: none;
+}
+input::placeholder{ color: rgba(107,114,128,.7); }
+
+textarea{
+  width:100%;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background:#fff;
+  color: var(--text);
+  font-size: 15px;
+  padding: 12px;
+  outline: none;
+}
+
+/* Quick phrases */
+.phrases{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top: 8px;
+}
+.phrases button{
+  min-height: 46px;
+  padding: 10px 12px;
+  font-size: 14px;
+  border-radius: 999px;
+  font-weight: 900;
+}
+
+/* -------- BIN area -------- */
+.bins{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:flex-start;
+  padding:10px;
+  border-radius:14px;
+  border:1px solid var(--line);
+  background: var(--panel2);
+  min-height: 56px;
+}
+
+.bin-tag{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 12px;
+  border-radius:999px;
+  background:#f3f4f6;
+  border:1px solid var(--line);
+  font-weight:800;
+  user-select:none;
+}
+.bin-tag .x{
+  width: 26px;
+  height: 26px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius: 999px;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color:#991b1b;
+  font-weight: 900;
+}
+
+.bin-add{
+  flex: 0 0 100%;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  min-width:0;
+  margin-top:2px;
+}
+.bin-add input{ flex:1; min-width:0; }
+.bin-add-actions{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  flex:0 0 auto;
+}
+.bin-add-actions button{
+  white-space:nowrap;
+  min-height:48px;
+}
+@media (max-width:760px){
+  .bin-add{ flex-direction:column; align-items:stretch; }
+  .bin-add-actions{ width:100%; }
+}
+
+/* -------- Divider -------- */
+.divider{ height:1px; background: var(--line); margin: 12px 0; }
+
+/* -------- Item Tiles -------- */
+.grid{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 10px;
+}
+@media (min-width: 1100px){
+  .grid{ grid-template-columns: repeat(3, minmax(0,1fr)); }
+}
+
+.tile{
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 12px;
+  min-height: 90px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  gap: 8px;
+  box-shadow: var(--shadow);
+  user-select:none;
+}
+.tile .t{ font-weight: 900; letter-spacing:.2px; font-size: 16px; }
+.tile .k{ color: var(--muted); font-size: 12px; }
+.tile .v{ font-size: 28px; font-weight: 900; letter-spacing:.2px; }
+.tile:active{ transform: translateY(1px); }
+.tile.selected{
+  outline: 3px solid var(--accent-soft);
+  background: #eef2ff;
+}
+
+/* -------- Colors Grid -------- */
+.color-grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 10px;
+}
+@media (min-width: 900px){
+  .color-grid{ grid-template-columns: repeat(4, minmax(0,1fr)); }
+}
+
+/* Mini wire selector */
+.wire-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid var(--line);
+  background: var(--panel2);
+  box-shadow: var(--shadow);
+  margin-bottom:10px;
+}
+.wire-label{
+  font-weight: 900;
+  font-size: 13px;
+  color: var(--text);
+}
+.wire-buttons{
+  display:flex;
+  gap:10px;
+}
+.wire-btn{
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-weight: 1000;
+}
+.wire-btn.is-active{
+  outline: 3px solid var(--accent-soft);
+  background: #eef2ff;
+}
+
+/* Wire color styling */
+.wire-btn.green-wire{
+  background:#16a34a;
+  color:#fff;
+  border-color:#15803d;
+}
+.wire-btn.green-wire.is-active{
+  filter: brightness(1.05);
+}
+
+/* Striped color buttons (must override .color-btn background) */
+.color-btn.color-striped-red-white{
+  background: repeating-linear-gradient(
+    45deg,
+    #dc2626,
+    #dc2626 10px,
+    #ffffff 10px,
+    #ffffff 20px
+  ) !important;
+  color:#111 !important;
+}
+.color-btn.color-striped-blue-white{
+  background: repeating-linear-gradient(
+    45deg,
+    #2563eb,
+    #2563eb 10px,
+    #ffffff 10px,
+    #ffffff 20px
+  ) !important;
+  color:#111 !important;
+}
+
+/* optional: make the dot match better on stripes */
+.color-btn.color-striped-red-white::before,
+.color-btn.color-striped-blue-white::before{
+  background: rgba(255,255,255,.9);
+}
+
+.color-btn{
+  min-height: 70px;
+  border-radius: 16px;
+  font-weight: 900;
+  font-size: 15px;
+  background: #ffffff;
+  border: 2px solid var(--line);
+  box-shadow: var(--shadow);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding: 10px;
+  user-select:none;
+}
+
+.color-btn:active{ transform: translateY(1px); }
+.color-btn::before{
+  content:"";
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  margin-right:8px;
+  background:#d1d5db;
+}
+
+/* Text “pill” ONLY for striped buttons */
+.color-btn.color-striped-red-white .color-label,
+.color-btn.color-striped-blue-white .color-label{
+  display:inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.92);
+  border: 1px solid rgba(0,0,0,.12);
+  box-shadow: 0 2px 6px rgba(0,0,0,.10);
+  line-height: 1.1;
+}
+
+/* -------- Hint box -------- */
+.hint{
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.hint details summary{
+  cursor:pointer;
+  font-weight:900;
+}
+.hint details[open] summary{
+  margin-bottom:8px;
+}
+
+/* -------- Right top + status -------- */
+.right-top{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  margin-bottom: 10px;
+  padding: 4px 0 8px;
+}
+
+.status{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.status b{ font-size: 14px; }
+.status > div{
+  background: var(--panel2);
+  border:1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 10px;
+}
+@media (max-width: 640px){
+  .status{ grid-template-columns: 1fr; }
+}
+
+.surface{
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+}
+
+/* -------- Toast -------- */
+.toast{
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  padding: 12px 14px;
+  border-radius: 999px;
+  background: rgba(17,24,39,.92);
+  border: 1px solid rgba(255,255,255,.14);
+  color: #fff;
+  font-weight: 800;
+  box-shadow: var(--shadow-strong);
+  opacity: 0;
+  pointer-events:none;
+  transition: opacity .18s ease, transform .18s ease;
+  z-index: 100;
+  max-width: calc(100vw - 24px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.toast.show{ opacity: 1; transform: translateX(-50%) translateY(-6px); }
+
+/* -------- Modal + keypad -------- */
+.modal-backdrop{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index: 50;
+  padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  overflow-x: hidden;
+}
+
+/* Keep BIN/QTY keypad above the Job Checklist modal */
+#modalBackdrop{
+  z-index: 80;
+}
+#scanModalBackdrop{
+  z-index: 95;
+}
+
+/* BIN size buttons inside keypad modal */
+.bin-size-btn.is-active{
+  outline: 3px solid var(--accent-soft);
+  background: #eef2ff;
+}
+
+.modal{
+  width: min(520px, 100%);
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: var(--shadow-strong);
+  padding: 14px;
+}
+
+/* Job Checklist modal */
+.job-modal{
+  width: min(860px, 100%);
+  max-height: min(78vh, 820px);
+
+  /* Key change: modal itself doesn't scroll; content area does */
+  overflow: hidden;
+
+  /* Layout */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Keep header pinned while content scrolls */
+.job-modal-head{
+  position: sticky;
+  top: 0;
+  z-index: 2;
+
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:flex-start;
+
+  /* Ensure it looks solid over scrolling content */
+  background: #ffffff;
+  padding-bottom: 8px;
+}
+
+/* Scroll container inside the Job modal (we’ll wrap content in it) */
+.job-modal-body{
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+
+  /* Prevent scroll chaining to the page behind */
+  overscroll-behavior: contain;
+
+  padding-bottom: 12px;
+}
+@media (max-width: 760px){
+  .modal,
+  .job-modal,
+  .customers-modal,
+  .version-modal{
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  .job-modal-body,
+  .customers-modal-body,
+  .version-log{
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .job-modal .row,
+  .customers-modal .row,
+  .version-modal .row{
+    min-width: 0;
+  }
+  .job-modal .field,
+  .customers-modal .field,
+  .version-modal .field{
+    min-width: 0;
+  }
+  .job-schedule-row{
+    display:grid;
+    grid-template-columns: 1fr;
+    gap:10px;
+  }
+  .job-schedule-row .field{
+    min-width: 0;
+  }
+}
+
+.modal h3{ margin: 0 0 8px; font-size: 16px; }
+.modal .meta{ color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+
+.qty-display{
+  width: 100%;
+  min-height: 62px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.qty-display .n{
+  font-weight: 1000;
+  font-size: 30px;
+  letter-spacing: .6px;
+}
+
+.keypad{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 10px;
+  margin: 10px 0 12px;
+}
+
+.key{
+  min-height: 62px;
+  border-radius: 16px;
+  font-size: 22px;
+  font-weight: 1000;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.modal .foot{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.modal .foot button{ flex:1; }
+
+.scan-video{
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: #111827;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  max-height: 300px;
+}
+
+#scanModalBackdrop .modal{
+  width: min(420px, 100%);
+}
+
+.scan-hint{
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* -------- Records list -------- */
+.records{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  max-height: 360px;
+  overflow:auto;
+  padding-right: 4px;
+  padding-top: 2px;
+}
+
+.record{
+  padding: 12px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  display:flex;
+  justify-content:space-between;
+  gap: 10px;
+  align-items:flex-start;
+}
+
+.record .left{ display:flex; flex-direction:column; gap:4px; }
+.record .name{ font-weight: 1000; }
+.record .meta{ color: var(--muted); font-size: 12px; line-height: 1.3; }
+.record .right{ display:flex; gap:8px; }
+.record button{
+  min-height: 44px;
+  padding: 10px 12px;
+  font-size: 14px;
+  border-radius: 14px;
+}
+.record .section{
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--line);
+}
+.record .section-title{
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .35px;
+  color: var(--muted);
+}
+.record .section-line{
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text);
+}
+.customers-modal{
+  width: min(980px, 100%);
+  max-height: min(80vh, 880px);
+  overflow: hidden;
+  display:flex;
+  flex-direction:column;
+}
+.customers-modal-head{
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  background:#fff;
+  padding-bottom: 8px;
+}
+.customers-modal-body{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  overflow:auto;
+  overscroll-behavior: contain;
+}
+.customers-modal-body #customersSearch{
+  width:100%;
+}
+
+/* --- Input helpers (desktop keyboard + optional on-screen keyboard button) --- */
+.kb-off #btnNameKB, .kb-off #btnNotesKB{ display:none !important; }
+.input-with-btn{ display:flex; gap:8px; align-items:center; }
+.input-with-btn input{ flex:1; }
+.textarea-with-btn{ display:flex; gap:8px; align-items:flex-start; }
+.textarea-with-btn textarea{ flex:1; }
+.btn-ghost.mini{ padding:10px 12px; border-radius:14px; font-weight:900; }
+.kb-btn{ height: 48px; }
+
+/* --- On-screen keyboard --- */
+.kb-backdrop{
+  position:fixed; inset:0;
+  background: rgba(0,0,0,.35);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index: 60;
+  padding: 14px;
+}
+
+/* --- Native input mode (iPhone/iPad): use system keyboard/keypad --- */
+body.native-input .kb-backdrop{ display:none !important; }
+body.native-input #modalBackdrop .keypad{ display:none !important; }
+body.native-input #qtyNativeInput{ display:block !important; }
+
+.kb{
+  width: min(900px, 100%);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  box-shadow: var(--shadow-strong);
+  padding: 18px;
+}
+
+.kb-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.kb-title{ font-weight: 900; font-size: 16px; }
+.kb-sub{ color: var(--muted); font-size: 12px; }
+
+.kb-display{
+  min-height: 72px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: #fff;
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: .2px;
+  display:flex;
+  align-items:center;
+  margin-bottom: 14px;
+  overflow:hidden;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+}
+.kb-display .caret{
+  width: 10px;
+  height: 28px;
+  margin-left: 6px;
+  background: var(--text);
+  display:inline-block;
+  border-radius: 3px;
+  animation: caretBlink 1s steps(1) infinite;
+}
+@keyframes caretBlink{
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.kb-keys{
+  display:grid;
+  grid-template-columns: repeat(10, minmax(0,1fr));
+  gap: 10px;
+}
+@media (max-width: 520px){
+  .kb-keys{ grid-template-columns: repeat(7, minmax(0,1fr)); }
+}
+
+.kb-key{
+  min-height: 72px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--btn);
+  box-shadow: var(--shadow);
+  font-size: 22px;
+  font-weight: 1000;
+}
+
+.kb-actions{
+  display:flex;
+  gap:10px;
+  margin-top: 10px;
+  flex-wrap:wrap;
+}
+
+.kb-actions button{
+  flex:1;
+  min-height: 72px;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.kb-key.is-active,
+.kb-actions button.is-active{
+  outline: 3px solid var(--accent-soft);
+  background: #eef2ff;
+}
+
+/* --- Count bubbles --- */
+.count-bubbles{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:12px;
+}
+
+.bubble{
+  padding:8px 10px;
+  border-radius:999px;
+  background:#ffffff;
+  border:1px solid var(--line);
+  color: var(--text);
+  font-weight: 900;
+  box-shadow: var(--shadow);
+}
+
+/* Price box */
+.price-box{
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel2);
+  box-shadow: var(--shadow);
+}
+.price-box .rowline{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+  font-size: 13px;
+}
+.price-box b{ font-size: 14px; }
+.price-box .big{
+  font-size: 18px;
+  font-weight: 1000;
+  letter-spacing: .2px;
+}
+#priceBreakdownText{
+  white-space: pre-line;
+  line-height: 1.35;
+}
+
+/* --- Job checklist photos --- */
+.photo-grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap:10px;
+}
+@media (min-width: 980px){
+  .photo-grid{ grid-template-columns: repeat(4, minmax(0,1fr)); }
+}
+.photo-thumb{
+  position:relative;
+  border-radius: 16px;
+  overflow:hidden;
+  border:1px solid var(--line);
+  background:#fff;
+  box-shadow: var(--shadow);
+  aspect-ratio: 1 / 1;
+}
+.photo-thumb img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.photo-x{
+  position:absolute;
+  top:8px;
+  right:8px;
+  width:34px;
+  height:34px;
+  min-height:34px;
+  padding:0;
+  border-radius:999px;
+  font-weight: 1000;
+  background:#fee2e2;
+  color:#991b1b;
+  border:1px solid #fecaca;
+}
+
+/* Ensure the photo viewer overlays the Job Checklist modal */
+#photoModalBackdrop{
+  z-index: 90; /* job modal backdrop is 50, kb is 60 */
+}
+
+.photo-modal{
+  width: min(980px, 100%);
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: var(--shadow-strong);
+  overflow:hidden;
+}
+.photo-modal-top{
+  display:flex;
+  justify-content:flex-end;
+  padding: 10px;
+  background: rgba(255,255,255,.9);
+  border-bottom: 1px solid var(--line);
+}
+.photo-modal img{
+  width:100%;
+  height:auto;
+  display:block;
+}
+
+/* --- Version badge + change log modal --- */
+.version-badge{
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 40; /* below modals/backdrops */
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 1000;
+  letter-spacing: .2px;
+  opacity: .92;
+}
+.version-badge:hover{ opacity: 1; }
+
+.version-modal{
+  width: min(720px, 100%);
+  max-height: min(78vh, 860px);
+
+  /* Key change: modal itself doesn't scroll; content area does */
+  overflow: hidden;
+
+  /* Layout */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Keep header pinned while content scrolls */
+.version-modal-head{
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+
+  /* Ensure it looks solid over scrolling content */
+  background: #ffffff;
+  padding-bottom: 8px;
+}
+
+/* The scroll container */
+.version-log{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+
+  /* Prevent scroll chaining to the page behind */
+  overscroll-behavior: contain;
+
+  /* Give breathing room at bottom */
+  padding-bottom: 12px;
+}
+.version-entry{
+  border: 1px solid var(--line);
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: var(--shadow);
+}
+.version-entry .top{
+  display:flex;
+  gap:10px;
+  align-items:baseline;
+  justify-content:space-between;
+  flex-wrap:wrap;
+}
+.version-entry .date{
+  font-weight: 1000;
+}
+.version-entry .feat{
+  font-weight: 1000;
+}
+.version-entry ul{
+  margin: 8px 0 0 18px;
+  padding: 0;
+}
+.version-entry li{
+  margin: 4px 0;
+  color: var(--text);
+  font-size: 14px;
+}
+  </style>
+</head>
+<body>
+  <!-- =========================
+       BODY
+       ========================= -->
+  <header>
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-row">
+          <img
+            class="brand-logo"
+            src="https://storage.googleapis.com/msgsndr/XeBTxKybuPYviobgJ9F1/media/68d3b522c5089904df0a19d1.png"
+            alt="Xtreme Lighting Logo"
+          />
+          <div>
+            <div class="title">Customer Inventory (Touch)</div>
+          </div>
+          <div class="mobile-quick-actions" aria-label="Quick actions">
+            <button class="btn-ghost mobile-quick-btn" id="btnScanQuick" type="button" title="Scan BIN">📷</button>
+          </div>
+          <button class="btn-ghost menu-toggle" id="btnMenuToggle" type="button" aria-expanded="false" aria-controls="actionsPanel" aria-label="Open menu">☰</button>
+        </div>
+      </div>
+
+      <div class="actions" id="actionsPanel">
+        <div class="action-toggles">
+          <div class="chip" title="When ON, tapping a color adds +1 instantly. Long-press adds +5.">
+            <input id="quickMode" type="checkbox" />
+            <div>
+              <div style="font-weight:900;">Quick Add Mode</div>
+              <div class="small">Tap = +1 • Hold = +5</div>
+            </div>
+          </div>
+
+          <div class="chip" title="Toggle the on-screen keyboard (useful on iPad/iPhone vs desktop).">
+            <input id="kbToggle" type="checkbox" />
+            <div>
+              <div style="font-weight:900;">On-Screen Keyboard</div>
+              <div class="small" id="kbToggleStatus">ON</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-buttons">
+          <button class="btn-ghost" id="btnUndo" disabled>Undo</button>
+          <button class="btn-ghost" id="btnRedo" disabled>Redo</button>
+          <button class="btn-ghost" id="btnNewCustomer">New Customer</button>
+          <button class="btn-ok" id="btnSaveCustomer">Save Customer</button>
+          <button class="btn-ghost" id="btnCustomers">Customers</button>
+          <button class="btn-ghost" id="btnScanBin">Scan BIN</button>
+          <button class="btn-accent" id="btnExport">Export CSV</button>
+          <button class="btn-ghost" id="btnImport">Import CSV</button>
+          <button class="btn-ghost" id="btnPrint">Print 3×5</button>
+        </div>
+        <input id="csvImportInput" type="file" accept=".csv" style="display:none;" />
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card customer-card">
+      <div class="customer-block-info">
+      <h2>Customer Info</h2>
+      <div class="save-pill" id="saveStatePill">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="saveStateText">No unsaved changes</span>
+        <span class="small">•</span>
+        <span class="small" id="lastSavedText">Last autosave: —</span>
+        <button class="btn-ok save-pill-btn" id="btnSaveCustomerQuick" type="button">Save Customer</button>
+      </div>
+
+      <div class="row view-only customer-preview-grid">
+        <div class="field" style="flex: 2; min-width: 220px;">
+          <label>Customer Name (view only)</label>
+          <div class="input-with-btn">
+            <input id="customerName" placeholder="Ex: Tamara Tsulaia" autocomplete="off" readonly />
+          </div>
+        </div>
+        <div class="field" style="display:none;">
+          <label>Removal Date (view only)</label>
+          <input id="removalDate" type="date" disabled />
+        </div>
+      </div>
+
+      <div class="row view-only customer-preview-grid" style="margin-top:10px;">
+        <div class="field" style="display:none;">
+          <label>Timer Setting (view only)</label>
+          <select id="timerSetting" disabled>
+            <option value="">Select…</option>
+            <option>None</option>
+            <option>On</option>
+            <option>2</option>
+            <option>4</option>
+            <option>6</option>
+            <option>8</option>
+            <option>Dusk to Dawn</option>
+          </select>
+        </div>
+
+        <div class="field" style="flex: 1.8;">
+          <label>BIN # (view only)</label>
+          <div class="bins" id="binsWrap"></div>
+          <div class="small" style="margin-top:6px;">Edit customer info in <b>Job Checklist + Notes</b>.</div>
+        </div>
+      </div>
+
+      <div class="row view-only customer-preview-grid" style="margin-top:10px; display:none;">
+        <div class="field">
+          <label>Company (view only)</label>
+          <input id="customerCompany" placeholder="Company" readonly />
+        </div>
+        <div class="field">
+          <label>Phone (view only)</label>
+          <input id="customerPhone" placeholder="Phone" readonly />
+        </div>
+      </div>
+
+      <div class="row view-only customer-preview-grid" style="margin-top:10px; display:none;">
+        <div class="field">
+          <label>Address (view only)</label>
+          <input id="customerAddress" placeholder="Address" readonly />
+        </div>
+      </div>
+
+      <div class="row customer-edit-row" style="margin-top:10px;">
+        <div class="field">
+          <label>Customer &amp; Job Info</label>
+          <button type="button" class="btn-accent" id="btnJobNotes">Open Customer &amp; Job Info</button>
+          <div class="small" style="margin-top:6px;">
+            Name, company, phone, address, removal date, timer setting, BINs, checklist, and notes are edited inside this panel.
+          </div>
+        </div>
+      </div>
+      <div class="divider"></div>
+      </div>
+
+    </section>
+
+    <section class="card">
+      <div class="right-top">
+        <div class="status" id="status">
+          <div><b>Customer:</b> <span id="statusName" class="muted">—</span></div>
+          <div><b>BINs:</b> <span id="statusBins" class="muted">—</span></div>
+        </div>
+
+        <div class="row" style="gap:10px;">
+          <button class="btn-ghost" id="btnClearCounts">Clear Counts (Current Customer)</button>
+        </div>
+      </div>
+
+      <div class="surface">
+        <h2>Tap an Item</h2>
+        <div class="muted" style="margin-bottom:10px;">
+          C9/C7 are tracked by <b>individual bulbs</b>. Minis/Icicles are tracked by <b>strands</b>. Garland/Wreaths are simple quantities (wreaths by size).
+        </div>
+        <div class="grid" id="itemGrid"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="surface">
+        <h2 id="colorsTitle">Then Tap a Color</h2>
+        <div class="muted" id="colorsSub" style="margin-bottom:10px;">—</div>
+
+        <!-- Mini Lights wire selector (shown only when Mini Lights selected) -->
+        <div class="wire-row" id="miniWireRow" style="display:none;">
+          <div class="wire-label">Mini wire:</div>
+          <div class="wire-buttons">
+            <button type="button" class="btn-ghost wire-btn green-wire" id="btnMiniWireGreen">Green</button>
+            <button type="button" class="btn-ghost wire-btn" id="btnMiniWireWhite">White</button>
+          </div>
+        </div>
+
+        <div class="color-grid" id="colorGrid"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>Current Counts</h2>
+      <div class="muted" style="margin-bottom:10px;">
+        These totals are for the <b>current customer</b>. They will be saved when you hit <b>Save Customer</b>.
+      </div>
+      <div id="countsPreview" class="muted"></div>
+
+      <!-- Price Range -->
+      <div class="price-box" id="priceBox">
+        <div class="rowline">
+          <b>Estimated Price Range (Items w/ pricing)</b>
+          <span class="small">C9: $8–$12 each • Minis: $25–$40 each • Garland: varies by size</span>
+        </div>
+        <div class="rowline" style="margin-top:6px;">
+          <div class="muted">Based on current counts for C9 + Mini Lights + Garland only.</div>
+          <div class="big" id="priceRangeText">$0 – $0</div>
+        </div>
+        <div class="rowline" style="margin-top:6px;">
+          <div class="small" id="priceBreakdownText">—</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <details>
+        <summary style="font-weight:900; cursor:pointer;">QR Preview</summary>
+        <div class="muted" style="margin:8px 0 10px;">
+          Scan this before printing (Client + BINs + Items + Notes).
+        </div>
+        <div id="qrPreviewWrap" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+          <img id="qrPreviewImg" alt="QR Preview" style="width:160px; height:160px; border:1px solid var(--line); border-radius:14px; background:#fff;" />
+          <div class="muted" id="qrPreviewText" style="min-width:220px; white-space:pre-line;"></div>
+        </div>
+        <div id="openQrWrap" style="display:none; gap:12px; align-items:center; flex-wrap:wrap; margin-top:10px;">
+          <img id="openQrImg" alt="Open Customer QR" style="width:160px; height:160px; border:1px solid var(--line); border-radius:14px; background:#fff;" />
+          <div class="muted" id="openQrText" style="min-width:220px; white-space:pre-line;"></div>
+        </div>
+      </details>
+    </section>
+
+    <section class="card" style="grid-column: 1 / -1;">
+      <div class="hint">
+        <h2 style="margin:0;">Touch tips & season totals</h2>
+        <div class="small" style="margin-top:8px;">
+          • With <b>Quick Add Mode ON</b>, tap a color/size to add +1 instantly (hold for +5).<br/>
+          • With Quick Add OFF, tapping a color/size opens the big keypad.
+        </div>
+        <div class="divider" style="margin:10px 0;"></div>
+        <div class="small">Auto-sums all saved customers for the current season.</div>
+        <div id="seasonStats" class="count-bubbles" style="margin-top:10px;"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- On-screen keyboard modal -->
+  <div class="kb-backdrop" id="kbBackdrop" role="dialog" aria-modal="true">
+    <div class="kb">
+      <div class="kb-top">
+        <div>
+          <div class="kb-title" id="kbTitle">Customer Name</div>
+          <div class="kb-sub" id="kbSub">Tap letters to type • Use ⌫ to delete</div>
+        </div>
+        <button class="btn-ghost kb-done" id="kbDone" type="button">Done</button>
+      </div>
+
+      <div class="kb-display" id="kbDisplay">—</div>
+      <div class="kb-keys" id="kbKeys"></div>
+
+      <div class="kb-actions">
+        <button class="btn-ghost" id="kbShift" type="button">Shift</button>
+        <button class="btn-ghost" id="kbCaps" type="button">Caps</button>
+        <button class="btn-ghost" id="kbSpace" type="button">Space</button>
+        <button class="btn-ghost" id="kbDot" type="button">.</button>
+        <button class="btn-ghost" id="kbDash" type="button">-</button>
+        <button class="btn-danger" id="kbClear" type="button">Clear</button>
+        <button class="btn-ghost" id="kbBack" type="button">⌫</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quantity / BIN keypad modal -->
+  <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h3 id="modalTitle">Enter Quantity</h3>
+      <div class="meta" id="modalMeta">—</div>
+
+      <!-- BIN size selector (only shown in BIN mode) -->
+      <div class="row" id="binSizeRow" style="gap:8px; margin:8px 0 10px; display:none;">
+        <button type="button" class="btn-ghost bin-size-btn" id="btnBinSizeSmall">Small</button>
+        <button type="button" class="btn-ghost bin-size-btn" id="btnBinSizeLarge">Large</button>
+      </div>
+      <div class="small" id="binSizeHint" style="display:none; margin-top:-6px;">
+        Select a bin size to continue.
+      </div>
+
+      <input id="qtyNativeInput" class="qty-native-input" type="number" inputmode="numeric" pattern="[0-9]*"
+             placeholder="Enter a number" style="display:none; width:100%; padding:14px 14px; border-radius:16px; border:1px solid var(--line); font-size:20px; margin-bottom:10px;" />
+
+      <div class="qty-display">
+        <div class="small" id="qtyLabel">Qty to add</div>
+        <div class="n" id="qtyValue">0</div>
+      </div>
+
+      <div class="keypad" id="keypad"></div>
+
+      <div class="foot">
+        <button id="btnCancel" class="btn-ghost" type="button">Cancel</button>
+        <button id="btnAddQty" class="btn-accent" type="button">Add Qty</button>
+      </div>
+
+      <div class="small" style="margin-top:10px;" id="modalFootnote">
+        Adds to existing quantity for this item/color.
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="scanModalBackdrop" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h3>Scan BIN QR</h3>
+      <div class="meta">Point your camera at a BIN QR code.</div>
+      <video id="scanVideo" class="scan-video" autoplay playsinline webkit-playsinline muted></video>
+      <div class="scan-hint" id="scanHint">Waiting for camera permission…</div>
+      <div class="foot" style="margin-top:10px;">
+        <button id="btnScanClose" class="btn-ghost" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+<!-- Photo viewer modal -->
+<div class="modal-backdrop" id="photoModalBackdrop" role="dialog" aria-modal="true">
+  <div class="photo-modal">
+    <div class="photo-modal-top">
+      <button class="btn-ghost" id="btnPhotoClose" type="button">Close</button>
+    </div>
+    <img id="photoModalImg" alt="Job photo" />
+  </div>
+</div>
+  <!-- Customer & Job Info modal -->
+  <div class="modal-backdrop" id="jobModalBackdrop" role="dialog" aria-modal="true">
+    <div class="modal job-modal">
+      <div class="job-modal-head">
+        <div>
+          <h3 style="margin:0;">Customer &amp; Job Info</h3>
+          <div class="meta">Install notes • In-season maintenance • Removal • Power outlet details</div>
+        </div>
+        <button class="btn-ghost" id="btnJobModalClose" type="button">Close</button>
+      </div>
+
+      <div class="job-modal-body">
+        <div class="divider" style="margin:10px 0;"></div>
+
+        <div class="row" style="margin-top:0;">
+          <div class="field">
+            <label>Customer Name</label>
+            <input id="customerNameJob" placeholder="Ex: Tamara Tsulaia" autocomplete="name" />
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <div class="field">
+            <label>Company</label>
+            <input id="customerCompanyJob" placeholder="Ex: Smith Residence" autocomplete="organization" />
+          </div>
+          <div class="field">
+            <label>Phone</label>
+            <input id="customerPhoneJob" placeholder="Ex: (555) 123-4567" autocomplete="tel" />
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <div class="field">
+            <label>Address</label>
+            <input id="customerAddressJob" placeholder="Ex: 123 Main St, Alpharetta, GA" autocomplete="street-address" />
+          </div>
+        </div>
+
+        <div class="row job-schedule-row" style="margin-top:10px;">
+          <div class="field">
+            <label>Removal Date</label>
+            <input id="removalDateJob" type="date" />
+          </div>
+          <div class="field">
+            <label>Timer Setting</label>
+            <select id="timerSettingJob">
+              <option value="">Select…</option>
+              <option>None</option>
+              <option>On</option>
+              <option>2</option>
+              <option>4</option>
+              <option>6</option>
+              <option>8</option>
+              <option>Dusk to Dawn</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <div class="field">
+            <label>BIN # (multiple allowed)</label>
+            <div class="bins" id="binsWrapJob">
+              <div class="bin-add">
+                <input id="binInputJob" placeholder="Tap to enter BIN #" inputmode="numeric" autocomplete="off" />
+                <div class="bin-add-actions">
+                  <button id="btnScanBinJob" class="btn-ghost" type="button">Scan BIN #</button>
+                  <button id="btnAddBinJob" class="btn-ghost" type="button" style="min-width: 92px;">Add</button>
+                </div>
+              </div>
+            </div>
+            <div class="small" style="margin-top:6px;">Tip: add BINs as you pack. They’ll export as a single field.</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <label class="chip">
+            <input type="checkbox" id="chkLift" />
+            <div><div style="font-weight:900;">Lift Required</div></div>
+          </label>
+
+          <label class="chip">
+            <input type="checkbox" id="chkGoat" />
+            <div><div style="font-weight:900;">Goat Assist Used</div></div>
+          </label>
+
+          <label class="chip">
+            <input type="checkbox" id="chkGutters" />
+            <div><div style="font-weight:900;">Gutter Guards</div></div>
+          </label>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <div class="field">
+            <label>Roof Type</label>
+            <select id="roofType">
+              <option value="">Select…</option>
+              <option>Shingle</option>
+              <option>Steel</option>
+              <option>Slate</option>
+              <option>Tile</option>
+              <option>Flat</option>
+              <option>Other</option>
+            </select>
+          </div>
+
+          <div class="field" style="flex:2;">
+            <label>Power Receptacle Location</label>
+            <input id="powerLocation" placeholder="Front porch GFCI, garage, left side, etc." />
+          </div>
+
+<!-- Outlet Used field removed -->
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <div class="field">
+            <label>Installation Notes</label>
+            <textarea id="installNotes" rows="2" placeholder="Special clips, fragile areas, steep sections, etc."></textarea>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>In-Season Maintenance Considerations</label>
+            <textarea id="maintenanceNotes" rows="2" placeholder="Likely trouble spots, wind/ice areas, GFCI notes, etc."></textarea>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Removal Details</label>
+            <textarea id="removalNotes" rows="2" placeholder="Lift needed again? Storage notes? Broken clips?"></textarea>
+          </div>
+        </div>
+
+        <!-- Job Photos -->
+        <div class="row" style="margin-top:10px;">
+          <div class="field">
+            <label>Job Photos</label>
+            <div class="row" style="gap:10px;">
+              <button type="button" class="btn-ghost" id="btnAddPhotos">Add Photos</button>
+              <input id="photosInput" type="file" accept="image/*" multiple style="display:none;" />
+            </div>
+            <div id="photosGrid" style="margin-top:10px;"></div>
+          </div>
+        </div>
+
+        <div class="divider" style="margin:12px 0;"></div>
+
+        <!-- Notes (kept same IDs so keyboard + QR + CSV still work) -->
+        <div class="row">
+          <div class="field">
+            <label>Notes (optional)</label>
+            <div class="textarea-with-btn">
+              <textarea
+                id="notesInput"
+                placeholder="Ex: Broken clip on garage, replace next season"
+                rows="3"
+              ></textarea>
+              <button class="btn-ghost mini kb-btn" id="btnNotesKB" type="button" title="On-screen keyboard">⌨︎</button>
+            </div>
+
+            <div class="phrases" aria-label="Quick note phrases">
+              <button type="button" class="btn-ghost" id="phraseRepair">Need to repair</button>
+              <button type="button" class="btn-ghost" id="phraseTighten">Need to tighten bulbs</button>
+              <button type="button" class="btn-ghost" id="phraseColorChange">Client asked about a color change</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="customersModalBackdrop" role="dialog" aria-modal="true">
+    <div class="modal customers-modal">
+      <div class="customers-modal-head">
+        <div>
+          <h3 style="margin:0;">Customers Saved This Season</h3>
+          <div class="meta" id="customersModalSummary">0 customer records</div>
+        </div>
+        <button class="btn-ghost" id="btnCustomersClose" type="button">Close</button>
+      </div>
+      <div class="divider" style="margin:10px 0;"></div>
+      <div class="customers-modal-body">
+        <div class="row" style="margin:0;">
+          <div class="field">
+            <label>Search</label>
+            <input id="customersSearch" type="search" placeholder="Search name, company, phone, or address" />
+          </div>
+          <div class="field" style="max-width:260px;">
+            <label>Sort</label>
+            <select id="customersSort">
+              <option value="last_saved_desc">Last Saved (Newest)</option>
+              <option value="last_saved_asc">Last Saved (Oldest)</option>
+              <option value="name_asc">Name (A-Z)</option>
+              <option value="name_desc">Name (Z-A)</option>
+            </select>
+          </div>
+        </div>
+        <div class="records" id="recordsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Version badge (bottom-right) -->
+  <button class="btn-ghost version-badge" id="btnVersion" type="button" title="Open change log">v1.1.0</button>
+
+  <!-- Change Log modal -->
+  <div class="modal-backdrop" id="versionModalBackdrop" role="dialog" aria-modal="true">
+    <div class="modal version-modal">
+      <div class="version-modal-head">
+        <div>
+          <h3 style="margin:0;">Change Log</h3>
+          <div class="meta" id="versionMeta">—</div>
+        </div>
+        <button class="btn-ghost" id="btnVersionClose" type="button">Close</button>
+      </div>
+
+      <div class="divider" style="margin:10px 0;"></div>
+
+      <div id="versionLogBody" class="version-log"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <div id="printCard"></div>
+  <!-- =========================
+       SCRIPT
+       ========================= -->
+<script>
+(async () => {
+  // ---------- Config ----------
+  const C9_COLORS = ["Warm White","Pure White","Cool White","Red","Green","Blue","Orange","Yellow","Purple","Pink","Teal"];
+  const C7_COLORS = C9_COLORS.slice(); // same as C9
+
+  const ICICLE_COLORS = ["Warm White", "Blue & White"];
+
+  // Minis: pick wire color first, then pick light color
+  const MINI_WIRES = ["Green", "White"];
+
+  const MINI_COLORS_GREEN = [
+    "Warm White",
+    "Cool White",
+    "Multi-Color",
+    "Candy Cane",
+    "Red",
+    "Green",
+    "Blue",
+    "Orange",
+    "Yellow",
+    "Purple",
+    "Pink",
+    "Teal"
+  ];
+
+  // White wire minis only available in these colors:
+  const MINI_COLORS_WHITE = [
+    "Warm White",
+    "Cool White"
+  ];
+
+  const WREATH_SIZES = ['24"', '30"', '36"', '48"', '60"', '72"', '96"'];
+
+  const GARLAND_SIZES = [
+    `4.5' x 14"<br>Oregon Fir`,
+    `9' x 14"<br>Oregon Fir`,
+    `9' x 14"<br>Decorated Garland`
+  ];
+
+  const STORAGE_KEY = "xtreme_inventory_touch_v1";
+
+  // Native input mode: on iPhone/iPad we use the system keyboard/keypad (no custom overlays)
+  const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  // iPhone/iPad: always use native keyboard + native number input (no on-screen keyboard/keypad)
+  const USE_NATIVE_INPUT = IS_IOS;
+
+  // Desktop: allow native keyboard typing *and* keep the on-screen keyboard available via buttons
+  const PREFER_NATIVE_TEXT_DESKTOP = (!IS_IOS) && window.matchMedia && window.matchMedia("(pointer:fine)").matches;
+
+  // Notes are forced uppercase everywhere
+  const NOTES_FORCE_UPPERCASE = true;
+
+  function uiScreenKeyboardEnabled(){
+    return !!(state && state.ui && state.ui.screenKeyboard);
+  }
+
+  function applyKeyboardPref(){
+    const on = uiScreenKeyboardEnabled();
+    document.body.classList.toggle("kb-off", !on);
+    if(kbToggleStatusEl) kbToggleStatusEl.textContent = on ? "ON" : "OFF";
+    if(!on) kbHide();
+  }
+
+  if(USE_NATIVE_INPUT) document.body.classList.add("native-input");
+
+// ---------- App Version + Change Log ----------
+const APP_VERSION = "v1.1.0";
+const APP_LAST_UPDATED = "2026-02-05";
+
+const CHANGELOG = [
+{
+  date: "2026-02-05",
+  feature: "Workflow redesign: customer info edits moved to Job Checklist modal",
+  changes: [
+    "Main Customer Info now displays view-only Customer Name, Removal Date, Timer Setting, and BINs",
+    "Added editable Customer Name, Removal Date, Timer Setting, and BIN tools inside Job Checklist + Notes",
+    "Added view-only-to-edit flow so tapping main customer fields opens Job Checklist for editing",
+    "Synced customer info values between modal editors, status panel, and main-view display"
+  ]
+},
+{
+  date: "2026-02-05",
+  feature: "Mobile UX: menu, quick save, and scanner flow",
+  changes: [
+    "Added hamburger menu behavior for iPhone and iPad breakpoints",
+    "Moved Scan BIN action into the top menu",
+    "Added iPhone quick Save Customer button beside unsaved-change status",
+    "Added BIN camera scanner modal and improved QR-to-customer loading flow",
+    "Raised BIN keypad modal z-index so keypad opens in front of Job Checklist modal"
+  ]
+},
+{
+  date: "2026-02-05",
+  feature: "iPhone/iPad compatibility + layout polish",
+  changes: [
+    "Added safe-area support for header, container, modal, and toast positioning",
+    "Added iPad Safari QR fallback decoder (jsQR) when BarcodeDetector is unavailable",
+    "Improved responsive button stacking and touch spacing for smaller screens",
+    "Refined customer card hierarchy and view-only preview blocks for faster scanning"
+  ]
+},
+{
+  date: "2026-02-04",
+  feature: "Keyboard toggle stability + checklist typing fix",
+  changes: [
+    "Removed Name keyboard button handler to prevent render-breaking errors",
+    "On-screen keyboard now auto-opens only when toggle is ON",
+    "Job Checklist notes now accept native typing when toggle is OFF",
+    "Job Checklist fields open on-screen keyboard (and blur) only when toggle is ON",
+    "Forced ALL CAPS in checklist notes during native typing"
+  ]
+},
+{
+  date: "2026-02-04",
+  feature: "Automatic keyboard behavior + fixed Job Checklist notes",
+  changes: [
+    "Removed manual keyboard button next to Customer Name",
+    "On-screen keyboard now auto-opens when enabled",
+    "Fixed Job Checklist + Notes popup to accept input",
+    "Job notes now work with native and on-screen keyboards",
+    "All job notes forced to uppercase"
+  ]
+},
+{
+  date: "2026-02-04",
+  feature: "Keyboard auto-open gating + Notes caps on native typing",
+  changes: [
+    "Updated Name/Notes bindings to avoid auto-opening on-screen keyboard on desktop",
+    "Auto-open on-screen keyboard now respects the on-screen keyboard toggle",
+    "Notes are forced to uppercase even when typing with the native keyboard"
+  ]
+},
+{
+  date: "2026-02-04",
+  feature: "Keyboard toggle + stop auto-opening checklist after Save",
+  changes: [
+    "Added On-Screen Keyboard toggle next to Quick Add Mode (persists)",
+    "Fixed corrupted customerName keyboard binding code",
+    "On-screen keyboard respects toggle and hides ⌨︎ buttons when OFF",
+    "Save Customer now starts next customer without auto-opening Job Checklist + Notes"
+  ]
+},
+{
+  date: "2026-02-04",
+  feature: "Desktop native typing + caps Notes + qty fix",
+  changes: [
+    "Removed duplicated Save Customer button",
+    "Save Customer now starts next customer without auto-opening the name keyboard",
+    "Forced all Notes fields to uppercase (main Notes + checklist notes)",
+    "Fixed Add Qty button (qty modal) so it correctly adds quantities",
+    "Enabled native keyboard typing on desktop while keeping optional on-screen keyboard buttons"
+  ]
+},
+{
+  date: "2026-02-03",
+  feature: "iPad UI fixes + iOS native input",
+  changes: [
+    "Prevented sticky-header repaint issues that could visually duplicate buttons on iPad",
+    "Allowed form labels like Removal Date to wrap/fit on iPad",
+    "New Customer now auto-opens Job Checklist + Notes",
+    "On iPhone/iPad, text fields use the native keyboard and qty/BIN modal uses a native number input"
+  ]
+},
+  {
+    date: "2026-02-03",
+    feature: "Native input mode on iPhone/iPad",
+    changes: [
+      "Disable on-screen keyboards on iPhone/iPad (use system keyboard instead)",
+      "Use a native number input inside the qty/BIN modal instead of the keypad grid on iPhone/iPad",
+      "Auto-apply native-input styling on iPhone/iPad"
+    ]
+  },
+{
+  date: "2026-02-03",
+  feature: "CSV Import fix: COLORS undefined",
+  changes: [
+    "Fixed CSV import crash when COLORS / MINI_COLORS_* globals are not defined by using typeof guards",
+    "Prevents ReferenceError and allows importing in all builds"
+  ]
+},
+{
+  date: "2026-02-03",
+  feature: "CSV Import robustness",
+  changes: [
+    "Fixed CSV import for exports saved with Excel BOM and case variations in headers",
+    "Improved error message to include the underlying reason on failure"
+  ]
+},
+{
+  date: "2026-02-03",
+  feature: "CSV Import",
+  changes: [
+    "Added Import CSV button next to Export",
+    "Imports CSV files exported by this app and restores customers, BINs, notes, checklist, and counts",
+    "Merges by Season + Customer Name (overwrites existing match)"
+  ]
+},
+{
+  date: "2026-02-03",
+  feature: "CSV Import (Rehydrate Records)",
+  changes: [
+    "Added Import CSV button",
+    "Supports re-importing files exported by this app",
+    "Merges customers by Season + Customer Name",
+    "Restores BINs, counts, notes, and checklist fields"
+  ]
+},
+{
+  date: "2026-02-02",
+  feature: "BIN Keypad UX Simplification",
+  changes: [
+    "Removed Small/Large buttons from main screen",
+    "Kept size selection only inside BIN keypad",
+    "Removed 3-digit requirement for BIN entry",
+    "Auto-padded BIN numbers to 3 digits on save"
+  ]
+},
+{
+  date: "2026-02-02",
+  feature: "BIN Size Required (Small/Large) in Keypad",
+  changes: [
+    "Added Small/Large buttons inside the BIN keypad popup",
+    "Made bin size selection required before Add BIN is enabled",
+    "Stored BINs as size + 3-digit code (S-### / L-###) and migrated legacy BIN strings to Small",
+    "Updated BIN display across tags, status, QR/Print, records, and CSV export"
+  ]
+},
+{
+  date: "2026-02-02",
+  feature: "Job Checklist Popup UX Fixes",
+  changes: [
+    "Pinned Job Checklist header + Close button while scrolling",
+    "Made only the modal body scroll (header stays visible)",
+    "Stopped background page from scrolling while the popup is open",
+    "Prevented scroll chaining/bounce from leaking to the page behind (iOS-friendly)"
+  ]
+},
+  {
+    date: "2026-02-02",
+    feature: "BIN Size Tracking",
+    changes: [
+      "Added Small / Large buttons when entering BINs",
+      "BINs now store size + 3-digit number",
+      "Updated BIN display across UI, CSV, QR, and records",
+      "Legacy BINs default to Small for compatibility"
+    ]
+  },
+{
+  date: "2026-02-02",
+  feature: "Job Checklist Popup UX Fixes",
+  changes: [
+    "Pinned Job Checklist header + Close button while scrolling",
+    "Made only the modal body scroll (header stays visible)",
+    "Stopped background page from scrolling while the popup is open",
+    "Prevented scroll chaining/bounce from leaking to the page behind (iOS-friendly)"
+  ]
+},
+{
+  date: "2026-02-02",
+  feature: "Change Log Popup UX Fixes",
+  changes: [
+    "Pinned Change Log header + Close button while scrolling",
+    "Made only the log body scroll (header stays visible)",
+    "Stopped background page from scrolling while the popup is open",
+    "Prevented scroll chaining/bounce from leaking to the page behind (iOS-friendly)"
+  ]
+},
+  {
+    date: "2026-02-02",
+    feature: "Change Log System (Version Badge + Popup)",
+    changes: [
+      "Added bottom-right version badge (tap to open change log)",
+      "Added Change Log modal/popup UI",
+      "Added CHANGELOG data structure + renderer",
+      "Fixed missing function reference so version click works"
+    ]
+  },
+  {
+    date: "2026-02-02",
+    feature: "Job Checklist Simplification",
+    changes: [
+      "Removed the 'Outlet Used' field from Job Checklist UI",
+      "Removed outletUsed from state, bindings, keyboard targets, and CSV export"
+    ]
+  },
+  {
+    date: "2026-02-01",
+    feature: "Job Checklist + Notes Popup",
+    changes: [
+      "Moved Job Checklist + Notes into a dedicated modal popup for a cleaner main screen",
+      "Added install/maintenance/removal sections (checkboxes + text areas)",
+      "Added roof type selector + power receptacle location field",
+      "Ensured data persists per customer record"
+    ]
+  },
+  {
+    date: "2026-02-01",
+    feature: "Job Photos (Per Customer)",
+    changes: [
+      "Added ability to attach multiple photos to a customer (stored in localStorage)",
+      "Added photo thumbnail grid + delete (×) button",
+      "Added full-screen photo viewer modal",
+      "Adjusted z-index so photo viewer displays above other popups"
+    ]
+  },
+  {
+    date: "2026-02-01",
+    feature: "Season Totals Stats (Saved Customers)",
+    changes: [
+      "Added Season totals section under Touch Tips",
+      "Auto-sums saved customers for the current season",
+      "Shows totals broken down by item (plus a grand total bubble)"
+    ]
+  },
+  {
+    date: "2026-02-01",
+    feature: "Cloud Sync (Synology NAS)",
+    changes: [
+      "Added optional Cloud Sync toggle to load/save app state to Synology endpoints",
+      "Debounced remote saves to reduce network spam",
+      "Added Cloud Sync status indicator (OFF / CONNECTING / SAVING / SAVED / ERROR)",
+      "Falls back to local mode if remote fails"
+    ]
+  },
+  {
+    date: "2026-01-29",
+    feature: "Color Button Improvements",
+    changes: [
+      "Fixed garland button labeling issues",
+      "Added special striped styles for 'Candy Cane' and 'Blue & White' options",
+      "Improved readability for special color buttons with pill text styling"
+    ]
+  },
+  {
+    date: "2026-01-28",
+    feature: "Original Look + Core Feature Set Stabilization",
+    changes: [
+      "Restored original UI look while keeping all functionality",
+      "Ensured CSV export includes customer-level + line-level price ranges",
+      "Kept QR preview + Print 3×5 working with the restored layout"
+    ]
+  },
+  {
+    date: "2026-01-28",
+    feature: "Inventory Items Expansion",
+    changes: [
+      "Added C7 bulbs item (tracked by bulbs)",
+      "Added Icicle lights item (tracked by strands)",
+      "Clarified units and on-screen guidance per item type"
+    ]
+  },
+  {
+    date: "2026-01-26",
+    feature: "Edit Current Counts (Tap-to-Edit)",
+    changes: [
+      "Enabled editing existing counts via tapping count bubbles",
+      "Added 'SET' mode in keypad modal for direct quantity replacement",
+      "Zero removes the entry cleanly"
+    ]
+  },
+  {
+    date: "2026-01-26",
+    feature: "Price Range Box Enhancements",
+    changes: [
+      "Price estimate breakdown displays each priced item on its own line",
+      "Added Garland pricing by size/variant",
+      "Price box calculates C9 + Minis + Garland only"
+    ]
+  },
+  {
+    date: "2026-01-26",
+    feature: "Garland + Wreaths Support",
+    changes: [
+      "Added Garland item with size variants",
+      "Added Wreaths item with size variants",
+      "Variants export cleanly in CSV + QR payload"
+    ]
+  },
+  {
+    date: "2026-01-26",
+    feature: "Mini Lights Wire Selector",
+    changes: [
+      "Added Green/White wire toggle for Minis",
+      "Enforced different available colors based on wire selection",
+      "Tracks minis as separate variants (Wire|Color) for accurate counts"
+    ]
+  },
+  {
+    date: "2026-01-26",
+    feature: "QR Preview + Print 3×5",
+    changes: [
+      "QR payload includes client + BINs + item breakdown + notes + estimated price",
+      "Added 3×5 print layout with QR code for quick scanning later"
+    ]
+  },
+  {
+    date: "2026-01-26",
+    feature: "Core Productivity Features",
+    changes: [
+      "Quick Add Mode: tap +1 / long-press +5",
+      "Undo stack for rapid rollback",
+      "BIN tags with 3-digit formatting and multi-BIN support",
+      "Saved Customers list + Load/Delete controls"
+    ]
+  },
+  {
+    date: "2026-01-26",
+    feature: "On-Screen Keyboard + Quick Notes",
+    changes: [
+      "On-screen keyboard for Customer Name",
+      "On-screen keyboard for Notes (with numbers)",
+      "Quick note phrase buttons (repair/tighten/color change)",
+      "Visible caret in keyboard display for clarity"
+    ]
+  }
+];
+
+  // ---------- Remote Sync (Synology NAS) ----------
+  // If this HTML is hosted on your NAS (same domain), keep baseUrl as "" (relative).
+  // Example baseUrl: "https://nas.yourdomain.com"
+  const REMOTE_SYNC = {
+    baseUrl: "",
+    loadPath: "/inventory/api/load.php",
+    savePath: "/inventory/api/save.php",
+    apiKey: "",
+    timeoutMs: 6500,
+    debounceMs: 900
+  };
+
+  // Pricing rules (C9 + Minis + Garland)
+  const PRICE_RULES = {
+    c9:   { min: 8,  max: 12, label: "C9 ($8–$12 each)" },
+    mini: { min: 25, max: 40, label: "Minis ($25–$40 each)" },
+
+    // Garland is priced by SIZE (variant)
+    garland: {
+      byVariant: {
+        [GARLAND_SIZES[0]]: { min: 60,  max: 70,  label: `Garland 4.5' x 14" Oregon Fir` },
+        [GARLAND_SIZES[1]]: { min: 112, max: 125, label: `Garland 9' x 14" Oregon Fir` },
+        [GARLAND_SIZES[2]]: { min: 300, max: 350, label: `Garland 9' x 14" Decorated Garland` }
+      }
+    }
+  };
+
+  const ITEMS = [
+    { id:"c9",      name:"C9 Bulbs",     unit:"bulbs",   colors: C9_COLORS,     needsColor:true, label:"Color" },
+    { id:"c7",      name:"C7 Bulbs",     unit:"bulbs",   colors: C7_COLORS,     needsColor:true, label:"Color" },
+    { id:"mini",    name:"Mini Lights",  unit:"strands", colors: [],            needsColor:true, label:"Color" },
+    { id:"icicle",  name:"Icicle Lights",unit:"strands", colors: ICICLE_COLORS, needsColor:true, label:"Color" },
+    { id:"garland", name:"Garland",      unit:"each",    colors: GARLAND_SIZES, needsColor:true, label:"Size" },
+    { id:"wreaths", name:"Wreaths",      unit:"each",    colors: WREATH_SIZES,  needsColor:true, label:"Size" },
+  ];
+
+  const seasonYear = new Date().getFullYear();
+  const todayISO = () => {
+    const d = new Date();
+    const tz = new Date(d.getTime() - d.getTimezoneOffset()*60000);
+    return tz.toISOString().slice(0,10);
+  };
+
+  // ---------- State ----------
+  const state = {
+    quickMode: true,
+    selectedItemId: "c9",
+
+    // Remote Sync preference (persists)
+    remoteSync: { enabled: false },
+
+    // UI preference: which mini wire is currently selected
+    miniWire: "Green",
+
+    // UI preference: enable/disable on-screen keyboard (text)
+    ui: { screenKeyboard: !IS_IOS },
+
+current: {
+  season: seasonYear,
+  customerName: "",
+  company: "",
+  phone: "",
+  address: "",
+  bins: [], // stored as { size: "S" | "L", code: "000" }
+  timerSetting: "",
+  removalDate: todayISO(),
+  notes: "",
+  counts: {},
+
+  // ANCHOR: JOB_CHECKLIST_STATE
+  jobChecklist: {
+    liftRequired: false,
+    goatAssist: false,
+    gutterGuards: false,
+    roofType: "",
+    powerLocation: "",
+    installNotes: "",
+    maintenanceNotes: "",
+    removalNotes: ""
+  }
+},
+    records: []
+  };
+
+  let currentHasUnsavedChanges = false;
+  let lastAutosaveAt = null;
+  let customersSearchTerm = "";
+  let customersSortMode = "last_saved_desc";
+  let _recordAutosaveTimer = null;
+
+  // ---------- DOM ----------
+  const $ = (id) => document.getElementById(id);
+
+const notesInputEl     = $("notesInput");
+// removed: btnNameKBEl (keyboard now auto-opens)
+const btnNotesKBEl      = $("btnNotesKB");
+const saveStatePillEl   = $("saveStatePill");
+const saveStateTextEl   = $("saveStateText");
+const lastSavedTextEl   = $("lastSavedText");
+
+// Job Checklist modal + fields
+const btnJobNotesEl      = $("btnJobNotes");
+const jobModalBackdropEl = $("jobModalBackdrop");
+const btnJobModalCloseEl = $("btnJobModalClose");
+
+const chkLiftEl       = $("chkLift");
+const chkGoatEl       = $("chkGoat");
+const chkGuttersEl    = $("chkGutters");
+const roofTypeEl      = $("roofType");
+const powerLocationEl = $("powerLocation");
+const outletUsedEl    = $("outletUsed");
+const installNotesEl  = $("installNotes");
+const maintenanceNotesEl = $("maintenanceNotes");
+const removalNotesEl  = $("removalNotes");
+// Photos (checklist)
+const btnAddPhotosEl   = $("btnAddPhotos");
+const photosInputEl    = $("photosInput");
+const photosGridEl     = $("photosGrid");
+const photoModalEl     = $("photoModalBackdrop");
+const photoModalImgEl  = $("photoModalImg");
+const btnPhotoCloseEl  = $("btnPhotoClose");
+  const btnMenuToggleEl  = $("btnMenuToggle");
+  const actionsPanelEl   = $("actionsPanel");
+  const btnScanQuickEl   = $("btnScanQuick");
+  const quickModeEl      = $("quickMode");
+  const kbToggleEl       = $("kbToggle");
+  const kbToggleStatusEl = $("kbToggleStatus");
+  const remoteSyncStatusEl = $("remoteSyncStatus");
+  const btnCustomersEl   = $("btnCustomers");
+  const btnCustomersCloseEl = $("btnCustomersClose");
+  const customersModalBackdropEl = $("customersModalBackdrop");
+  const customersSearchEl = $("customersSearch");
+  const customersSortEl = $("customersSort");
+  const customersModalSummaryEl = $("customersModalSummary");
+  const customerNameEl   = $("customerName");
+  const customerCompanyEl = $("customerCompany");
+  const customerPhoneEl = $("customerPhone");
+  const customerAddressEl = $("customerAddress");
+  const customerNameJobEl= $("customerNameJob");
+  const customerCompanyJobEl = $("customerCompanyJob");
+  const customerPhoneJobEl = $("customerPhoneJob");
+  const customerAddressJobEl = $("customerAddressJob");
+  const removalDateJobEl = $("removalDateJob");
+  const timerSettingJobEl= $("timerSettingJob");
+  const removalDateEl    = $("removalDate");
+  const timerSettingEl   = $("timerSetting");
+  const binsWrapEl       = $("binsWrap");
+  const binsWrapJobEl    = $("binsWrapJob");
+  const binInputJobEl    = $("binInputJob");
+  const btnScanBinJobEl  = $("btnScanBinJob");
+  const btnScanBinEl     = $("btnScanBin");
+
+  const btnAddBinJobEl   = $("btnAddBinJob");
+
+  const statusNameEl     = $("statusName");
+  const statusBinsEl     = $("statusBins");
+  const statusTimerEl    = $("statusTimer");
+  const statusRemovalEl  = $("statusRemoval");
+
+  const itemGridEl       = $("itemGrid");
+  const colorGridEl      = $("colorGrid");
+  const colorsTitleEl    = $("colorsTitle");
+  const colorsSubEl      = $("colorsSub");
+  const countsPreviewEl  = $("countsPreview");
+
+  // Mini wire selector
+  const miniWireRowEl       = $("miniWireRow");
+  const btnMiniWireGreenEl  = $("btnMiniWireGreen");
+  const btnMiniWireWhiteEl  = $("btnMiniWireWhite");
+
+  const priceRangeTextEl     = $("priceRangeText");
+  const priceBreakdownTextEl = $("priceBreakdownText");
+
+  const btnUndoEl        = $("btnUndo");
+  const btnRedoEl        = $("btnRedo");
+  const btnNewCustomerEl = $("btnNewCustomer");
+  const btnSaveCustomerEl= $("btnSaveCustomer");
+  const btnSaveCustomerQuickEl = $("btnSaveCustomerQuick");
+  const btnExportEl      = $("btnExport");
+  const btnImportEl      = $("btnImport");
+  const csvImportInputEl = $("csvImportInput");
+  const btnClearCountsEl = $("btnClearCounts");
+
+  const recordsListEl    = $("recordsList");
+
+  const modalBackdropEl  = $("modalBackdrop");
+  const modalTitleEl     = $("modalTitle");
+  const modalMetaEl      = $("modalMeta");
+
+  // BIN size controls (only used in BIN mode)
+  const binSizeRowEl       = $("binSizeRow");
+  const btnBinSizeSmallEl  = $("btnBinSizeSmall");
+  const btnBinSizeLargeEl  = $("btnBinSizeLarge");
+  const binSizeHintEl      = $("binSizeHint");
+
+  const qtyLabelEl       = $("qtyLabel");
+  const qtyValueEl       = $("qtyValue");
+  const qtyNativeInputEl = $("qtyNativeInput");
+  const keypadEl         = $("keypad");
+  const btnCancelEl      = $("btnCancel");
+  const btnAddQtyEl      = $("btnAddQty");
+  const modalFootnoteEl  = $("modalFootnote");
+  const scanModalBackdropEl = $("scanModalBackdrop");
+  const scanVideoEl         = $("scanVideo");
+  const scanHintEl          = $("scanHint");
+  const btnScanCloseEl      = $("btnScanClose");
+
+  const toastEl          = $("toast");
+  const qrPreviewImgEl   = $("qrPreviewImg");
+  const qrPreviewTextEl  = $("qrPreviewText");
+  const openQrWrapEl     = $("openQrWrap");
+  const openQrImgEl      = $("openQrImg");
+  const openQrTextEl     = $("openQrText");
+  const seasonStatsEl    = $("seasonStats");
+
+  // Version / Change Log
+  const btnVersionEl          = $("btnVersion");
+  const versionModalBackdropEl= $("versionModalBackdrop");
+  const btnVersionCloseEl     = $("btnVersionClose");
+  const versionMetaEl         = $("versionMeta");
+  const versionLogBodyEl      = $("versionLogBody");
+
+  // Phrases
+  const phraseRepairEl      = $("phraseRepair");
+  const phraseTightenEl     = $("phraseTighten");
+  const phraseColorChangeEl = $("phraseColorChange");
+
+  // Keyboard modal DOM
+  const kbBackdropEl = $("kbBackdrop");
+  const kbKeysEl     = $("kbKeys");
+  const kbDisplayEl  = $("kbDisplay");
+  const kbDoneEl     = $("kbDone");
+  const kbSpaceEl    = $("kbSpace");
+  const kbClearEl    = $("kbClear");
+  const kbBackEl     = $("kbBack");
+
+  const kbTitleEl = $("kbTitle");
+  const kbSubEl   = $("kbSub");
+  const kbShiftEl = $("kbShift");
+  const kbCapsEl  = $("kbCaps");
+  const kbDotEl   = $("kbDot");
+  const kbDashEl  = $("kbDash");
+
+  // Keyboard target can be name, notes, or any jobChecklist field
+  // Allowed:
+  //  - "name"
+  //  - "notes"
+  //  - "jc:powerLocation" | "jc:outletUsed" | "jc:installNotes" | "jc:maintenanceNotes" | "jc:removalNotes"
+  let kbTarget = "name";
+  let kbShift = false;      // one-time shift
+  let kbCaps  = false;      // caps lock
+
+  const KB_TARGET_META = {
+    "name": { title: "Customer Name", sub: "Tap letters to type • Use ⌫ to delete", numbers: false },
+    "notes": { title: "Notes", sub: "Tap to type • Numbers available • Shift/Caps for case", numbers: true },
+
+    "jc:powerLocation": { title: "Power Receptacle Location", sub: "Tap to type • Numbers available", numbers: true },
+    "jc:outletUsed": { title: "Outlet Used", sub: "Tap to type • Numbers available", numbers: true },
+    "jc:installNotes": { title: "Installation Notes", sub: "Tap to type • Numbers available", numbers: true },
+    "jc:maintenanceNotes": { title: "Maintenance Notes", sub: "Tap to type • Numbers available", numbers: true },
+    "jc:removalNotes": { title: "Removal Notes", sub: "Tap to type • Numbers available", numbers: true },
+  };
+
+  function kbIsChecklistTarget(){
+    return typeof kbTarget === "string" && kbTarget.startsWith("jc:");
+  }
+
+  function kbChecklistKey(){
+    return kbIsChecklistTarget() ? kbTarget.slice(3) : "";
+  }
+
+  function isPhoneViewport(){
+    return window.matchMedia("(max-width: 760px)").matches;
+  }
+
+  function isMenuViewport(){
+    return window.matchMedia("(max-width: 1024px)").matches;
+  }
+
+  function setHeaderMenuOpen(open){
+    if(!actionsPanelEl || !btnMenuToggleEl) return;
+    const next = !!open;
+    actionsPanelEl.classList.toggle("is-open", next);
+    btnMenuToggleEl.setAttribute("aria-expanded", next ? "true" : "false");
+  }
+
+  function closeHeaderMenuIfPhone(){
+    if(isMenuViewport()) setHeaderMenuOpen(false);
+  }
+
+  function setCustomerNameValue(next, sourceEl){
+    const value = String(next || "");
+    state.current.customerName = value;
+    if(customerNameEl && customerNameEl !== sourceEl && customerNameEl.value !== value) customerNameEl.value = value;
+    if(customerNameJobEl && customerNameJobEl !== sourceEl && customerNameJobEl.value !== value) customerNameJobEl.value = value;
+    updateStatus();
+    renderQrPreview();
+  }
+
+  function ensureCustomerFields(rec){
+    if(!rec || typeof rec !== "object") return;
+    rec.company = typeof rec.company === "string" ? rec.company : "";
+    rec.phone = typeof rec.phone === "string" ? rec.phone : "";
+    rec.address = typeof rec.address === "string" ? rec.address : "";
+  }
+
+  // ---------- Helpers ----------
+  // ---------- Job Checklist Helpers ----------
+// --- Keyboard: Job Checklist text fields ---
+function attachKbToField(el, targetKey){
+  if(!el) return;
+
+  el.addEventListener("input", () => {
+    const jc = ensureJobChecklist();
+    const key = targetKey.startsWith("jc:") ? targetKey.slice(3) : "";
+    if(key){
+      let v = String(el.value || "");
+      if(typeof NOTES_FORCE_UPPERCASE !== "undefined" && NOTES_FORCE_UPPERCASE){
+        v = v.toUpperCase();
+        if(v !== el.value) el.value = v;
+      }
+      jc[key] = v;
+    }
+    save({ currentDirty: true });
+  });
+
+  const AUTO_OPEN_SCREEN_KB =
+    (!USE_NATIVE_INPUT) &&
+    (typeof uiScreenKeyboardEnabled === "function" ? uiScreenKeyboardEnabled() : false);
+
+  if(AUTO_OPEN_SCREEN_KB){
+    el.addEventListener("focus", () => { kbShow(targetKey); el.blur(); });
+    el.addEventListener("click", () => { kbShow(targetKey); el.blur(); });
+  }
+}
+  function ensureJobChecklist(){
+    if(!state.current.jobChecklist || typeof state.current.jobChecklist !== "object"){
+      state.current.jobChecklist = {};
+    }
+    const jc = state.current.jobChecklist;
+
+    jc.liftRequired = !!jc.liftRequired;
+    jc.goatAssist = !!jc.goatAssist;
+    jc.gutterGuards = !!jc.gutterGuards;
+
+    jc.roofType = typeof jc.roofType === "string" ? jc.roofType : "";
+    jc.powerLocation = typeof jc.powerLocation === "string" ? jc.powerLocation : "";
+    jc.outletUsed = typeof jc.outletUsed === "string" ? jc.outletUsed : "";
+
+    jc.installNotes = typeof jc.installNotes === "string" ? jc.installNotes : "";
+    jc.maintenanceNotes = typeof jc.maintenanceNotes === "string" ? jc.maintenanceNotes : "";
+    jc.removalNotes = typeof jc.removalNotes === "string" ? jc.removalNotes : "";
+    return jc;
+  }
+
+function openJobModal(){
+  if(!jobModalBackdropEl) return;
+  syncFormFromState();
+  jobModalBackdropEl.style.display = "flex";
+  document.body.classList.add("modal-open");
+  renderChecklistPhotos();
+}
+
+function closeJobModal(){
+  if(!jobModalBackdropEl) return;
+  jobModalBackdropEl.style.display = "none";
+  document.body.classList.remove("modal-open");
+}
+
+function openCustomersModal(){
+  if(!customersModalBackdropEl) return;
+  closeHeaderMenuIfPhone();
+  renderRecords();
+  customersModalBackdropEl.style.display = "flex";
+  document.body.classList.add("modal-open");
+  if(customersSearchEl){
+    customersSearchEl.value = customersSearchTerm;
+  }
+  if(customersSortEl){
+    customersSortEl.value = customersSortMode;
+  }
+  if(customersSearchEl){
+    customersSearchEl.focus();
+  }
+}
+
+function closeCustomersModal(){
+  if(!customersModalBackdropEl) return;
+  customersModalBackdropEl.style.display = "none";
+  document.body.classList.remove("modal-open");
+}
+  // Mini variant helpers
+  function miniVariantKey(wire, color){
+    return `${wire} Wire|${color}`;
+  }
+
+  function miniVariantDisplay(variantKey){
+    // stored like: "Green Wire|Warm White"
+    const s = String(variantKey || "");
+    if(!s.includes("|")) return s.replace(/<br>/g," ");
+    const [wirePart, colorPart] = s.split("|");
+    return `${String(colorPart || "").replace(/<br>/g," ")} (${String(wirePart || "").trim()})`;
+  }
+
+  function variantDisplay(itemId, variantKey){
+    if(itemId === "mini") return miniVariantDisplay(variantKey);
+    return String(variantKey || "").replace(/<br>/g," ");
+  }
+
+  function variantExportLabel(itemId, variantKey){
+    // Keep the same readable formatting for CSV/QR
+    return variantDisplay(itemId, variantKey);
+  }
+
+  // ---------- Color Helpers ----------
+  const COLOR_MAP = {
+    "Warm White": "#f5e6b0",
+    "Pure White": "#ffffff",
+    "Cool White": "#e5f0ff",
+    "Cool White White Wire": "#e5f0ff",
+    "Red": "#dc2626",
+    "Green": "#16a34a",
+    "Blue": "#2563eb",
+    "Orange": "#f97316",
+    "Yellow": "#facc15",
+    "Purple": "#7c3aed",
+    "Pink": "#ec4899",
+    "Teal": "#14b8a6",
+    "Multi-Color": "linear-gradient(135deg,#dc2626,#f97316,#facc15,#16a34a,#2563eb,#7c3aed)"
+  };
+
+  function getColorStyle(label){
+    return COLOR_MAP[label] || null;
+  }
+
+  function isLightColor(hex){
+    if(!hex || hex.startsWith("linear-gradient")) return false;
+    const c = hex.replace("#","");
+    const r = parseInt(c.substr(0,2),16);
+    const g = parseInt(c.substr(2,2),16);
+    const b = parseInt(c.substr(4,2),16);
+    return (r*299 + g*587 + b*114) / 1000 > 170;
+  }
+  
+  function toast(msg, durationMs = 1400){
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toast._t);
+    const ms = Math.max(900, Number(durationMs || 1400));
+    toast._t = setTimeout(() => toastEl.classList.remove("show"), ms);
+  }
+
+  function deepClone(obj){ return JSON.parse(JSON.stringify(obj)); }
+
+  function fmtClock(d){
+    if(!(d instanceof Date)) return "—";
+    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
+
+  function renderSaveCue(){
+    if(saveStateTextEl){
+      saveStateTextEl.textContent = currentHasUnsavedChanges ? "Unsaved customer changes" : "No unsaved changes";
+    }
+    if(saveStatePillEl){
+      saveStatePillEl.classList.toggle("is-dirty", currentHasUnsavedChanges);
+    }
+    if(lastSavedTextEl){
+      lastSavedTextEl.textContent = `Last autosave: ${fmtClock(lastAutosaveAt)}`;
+    }
+    if(btnSaveCustomerQuickEl){
+      const showQuick = currentHasUnsavedChanges && isPhoneViewport();
+      btnSaveCustomerQuickEl.style.display = showQuick ? "inline-flex" : "none";
+    }
+  }
+
+  function load(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return;
+      const data = JSON.parse(raw);
+      if(data && typeof data === "object"){
+        Object.assign(state, data);
+        if(!state.current?.season) state.current.season = seasonYear;
+        if(!state.current?.removalDate) state.current.removalDate = todayISO();
+
+        // Ensure UI prefs exist
+        if(!state.ui || typeof state.ui !== "object") state.ui = { screenKeyboard: !IS_IOS };
+        if(typeof state.ui.screenKeyboard !== "boolean") state.ui.screenKeyboard = !IS_IOS;
+
+        if(typeof state.current?.notes !== "string") state.current.notes = "";
+        if(NOTES_FORCE_UPPERCASE){
+          state.current.notes = String(state.current.notes || "").toUpperCase();
+        }
+        ensureCustomerFields(state.current);
+        if(!state.current?.counts) state.current.counts = {};
+        if(!Array.isArray(state.current?.bins)) state.current.bins = [];
+        if(!Array.isArray(state.records)) state.records = [];
+        state.records.forEach(ensureCustomerFields);
+        // Migrate legacy BIN strings to {size,code} objects
+        state.current.bins = (state.current.bins || []).map(normalizeBinEntry).filter(Boolean);
+      }
+    }catch(e){}
+  }
+
+  // ---------- Remote Sync helpers ----------
+  let _remoteHydrating = false;
+  let _remoteSaveTimer = null;
+  let _remoteLastOkAt  = 0;
+
+  function remoteEnabled(){
+    return !!(REMOTE_SYNC && REMOTE_SYNC.loadPath && REMOTE_SYNC.savePath);
+  }
+
+  function remoteUrl(path){
+    const base = String(REMOTE_SYNC.baseUrl || "").replace(/\/$/, "");
+    const p = String(path || "");
+    if(!base) return p; // relative
+    return base + (p.startsWith("/") ? p : ("/" + p));
+  }
+
+  function setRemoteStatus(text, isError=false){
+    if(!remoteSyncStatusEl) return;
+    remoteSyncStatusEl.textContent = String(text || "");
+    remoteSyncStatusEl.style.color = isError ? "#991b1b" : "";
+  }
+
+  async function fetchJsonWithTimeout(url, opts={}){
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), Number(REMOTE_SYNC.timeoutMs || 6500));
+    try{
+      const res = await fetch(url, { ...opts, signal: controller.signal });
+      const txt = await res.text();
+      let data = null;
+      try{ data = txt ? JSON.parse(txt) : null; }catch(e){ data = null; }
+      if(!res.ok){
+        const msg = (data && (data.error || data.message)) ? (data.error || data.message) : ("HTTP " + res.status);
+        throw new Error(msg);
+      }
+      return data;
+    }finally{
+      clearTimeout(t);
+    }
+  }
+
+  async function remoteLoad(){
+    if(!remoteEnabled()) return null;
+    const url = remoteUrl(REMOTE_SYNC.loadPath);
+    const headers = {};
+    if(REMOTE_SYNC.apiKey) headers["X-API-Key"] = REMOTE_SYNC.apiKey;
+    return await fetchJsonWithTimeout(url, { method:"GET", headers });
+  }
+
+  async function remoteSaveNow(){
+    if(!remoteEnabled() || _remoteHydrating) return;
+    setRemoteStatus("SAVING…");
+    const url = remoteUrl(REMOTE_SYNC.savePath);
+    const headers = { "Content-Type":"application/json" };
+    if(REMOTE_SYNC.apiKey) headers["X-API-Key"] = REMOTE_SYNC.apiKey;
+
+    // Send full app state (includes records + current work)
+    const payload = { version: 1, updatedAt: new Date().toISOString(), state };
+
+    try{
+      await fetchJsonWithTimeout(url, { method:"POST", headers, body: JSON.stringify(payload) });
+      _remoteLastOkAt = Date.now();
+      setRemoteStatus("SAVED");
+    }catch(err){
+      setRemoteStatus("ERROR", true);
+      console.warn("Remote save failed:", err);
+    }
+  }
+
+  async function initAutoSync(){
+    if(!remoteEnabled()) return;
+    setRemoteStatus("CONNECTING…");
+    try{
+      _remoteHydrating = true;
+      const payload = await remoteLoad();
+      const next = payload && payload.state ? payload.state : payload;
+
+      if(next && typeof next === "object" && next.records){
+        Object.assign(state, next);
+        save({ remote:false });
+        syncFormFromState();
+        renderAll();
+        setRemoteStatus("SAVED");
+      }else{
+        // No remote data yet -> push current local state.
+        await remoteSaveNow();
+      }
+    }catch(err){
+      setRemoteStatus("ERROR", true);
+      console.warn("Auto cloud sync init failed:", err);
+    }finally{
+      _remoteHydrating = false;
+    }
+  }
+
+  function scheduleRemoteSave(){
+    if(!remoteEnabled() || _remoteHydrating) return;
+    clearTimeout(_remoteSaveTimer);
+    _remoteSaveTimer = setTimeout(() => remoteSaveNow(), Number(REMOTE_SYNC.debounceMs || 900));
+  }
+
+  function autosaveCurrentRecord(){
+    const name = String(state.current?.customerName || "").trim();
+    if(!name) return false;
+    const rec = deepClone(state.current);
+    ensureCustomerFields(rec);
+    rec.savedAt = new Date().toISOString();
+
+    const keyName = name.toLowerCase();
+    const idx = state.records.findIndex(r =>
+      Number(r.season) === Number(rec.season) &&
+      String(r.customerName || "").trim().toLowerCase() === keyName
+    );
+    if(idx >= 0) state.records[idx] = rec;
+    else state.records.unshift(rec);
+    return true;
+  }
+
+  function scheduleRecordAutosave(){
+    clearTimeout(_recordAutosaveTimer);
+    _recordAutosaveTimer = setTimeout(() => {
+      if(!autosaveCurrentRecord()) return;
+      save({ currentDirty: false, skipRecordAutosave: true });
+      renderRecords();
+    }, 900);
+  }
+
+  function save(opts = {}){
+    const doRemote = (opts.remote !== false);
+    if(opts.currentDirty === true) currentHasUnsavedChanges = true;
+    if(opts.currentDirty === false) currentHasUnsavedChanges = false;
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+    lastAutosaveAt = new Date();
+    renderSaveCue();
+    if(opts.skipRecordAutosave !== true && opts.currentDirty === true){
+      scheduleRecordAutosave();
+    }
+    if(doRemote) scheduleRemoteSave();
+  }
+
+  function titleCaseNameFinal(str){
+    const s = String(str || "").trim().replace(/\s+/g, " ");
+    if(!s) return "";
+    return s.split(" ").map(w => {
+      const lower = w.toLowerCase();
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    }).join(" ");
+  }
+
+  function titleCaseNameLive(str){
+    let raw = String(str || "").replace(/\s+/g, " ");
+    const hasTrailingSpace = raw.endsWith(" ");
+    raw = raw.trimStart();
+    const parts = raw.split(" ").filter(Boolean);
+
+    const cased = parts.map(w => {
+      const lower = w.toLowerCase();
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    }).join(" ");
+
+    return hasTrailingSpace ? (cased + " ") : cased;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+function fmtMoney(n){
+  const v = Number(n || 0);
+  return "$" + v.toFixed(0);
+}
+
+// ---------- Photos (Job Checklist) ----------
+function uid(){
+  return (
+    Math.random().toString(16).slice(2) +
+    Date.now().toString(16) +
+    Math.random().toString(16).slice(2)
+  ).slice(0, 24);
+}
+
+function pickImageQuality(fileSize){
+  if(fileSize > 6_000_000) return 0.62;
+  if(fileSize > 3_000_000) return 0.70;
+  return 0.78;
+}
+
+async function fileToCompressedDataUrl(file, maxSide = 1400){
+  const img = await new Promise((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = URL.createObjectURL(file);
+  });
+
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const scale = Math.min(1, maxSide / Math.max(w, h));
+  const tw = Math.max(1, Math.round(w * scale));
+  const th = Math.max(1, Math.round(h * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = tw;
+  canvas.height = th;
+  const ctx = canvas.getContext("2d", { alpha: false });
+  ctx.drawImage(img, 0, 0, tw, th);
+
+  const q = pickImageQuality(file.size || 0);
+  let dataUrl = canvas.toDataURL("image/jpeg", q);
+
+  // If still huge, try once more smaller
+  if(dataUrl.length > 1_600_000){
+    const max2 = Math.max(900, Math.floor(maxSide * 0.75));
+    const scale2 = Math.min(1, max2 / Math.max(w, h));
+    const tw2 = Math.max(1, Math.round(w * scale2));
+    const th2 = Math.max(1, Math.round(h * scale2));
+    canvas.width = tw2; canvas.height = th2;
+    ctx.drawImage(img, 0, 0, tw2, th2);
+    dataUrl = canvas.toDataURL("image/jpeg", Math.min(q, 0.62));
+  }
+
+  try{ URL.revokeObjectURL(img.src); }catch(e){}
+  return dataUrl;
+}
+
+function renderChecklistPhotos(){
+  if(!photosGridEl) return;
+  const jc = state.current.jobChecklist || {};
+  const photos = Array.isArray(jc.photos) ? jc.photos : [];
+
+  if(!photos.length){
+    photosGridEl.innerHTML = `<div class="muted">No photos added yet.</div>`;
+    return;
+  }
+
+  photosGridEl.innerHTML = `
+    <div class="photo-grid">
+      ${photos.map(p => `
+        <div class="photo-thumb" data-id="${escapeHtml(p.id)}" title="Tap to view">
+          <img src="${p.dataUrl}" alt="${escapeHtml(p.name || "Photo")}" />
+          <button type="button" class="photo-x" data-act="del" data-id="${escapeHtml(p.id)}">×</button>
+        </div>
+      `).join("")}
+    </div>
+    <div class="small" style="margin-top:8px;">
+      Photos are stored on this device/browser (localStorage).
+    </div>
+  `;
+}
+
+function openPhotoModal(src){
+  if(!photoModalEl || !photoModalImgEl) return;
+  photoModalImgEl.src = src;
+  photoModalEl.style.display = "flex";
+}
+
+function closePhotoModal(){
+  if(!photoModalEl || !photoModalImgEl) return;
+  photoModalEl.style.display = "none";
+  photoModalImgEl.src = "";
+}
+
+  // ---------- Pricing ----------
+  function sumItemQty(itemId){
+    const obj = state.current.counts?.[itemId] || {};
+    return Object.values(obj).reduce((a,b)=>a+Number(b||0), 0);
+  }
+
+  function getPriceRule(itemId, variantKey){
+    const rule = PRICE_RULES[itemId] || null;
+    if(!rule) return null;
+
+    // Variant-based pricing (Garland)
+    if(rule.byVariant){
+      return rule.byVariant[variantKey] || null;
+    }
+
+    // Item-based pricing (C9, Minis)
+    return rule;
+  }
+
+  function getCustomerPriceRange(){
+    let min = 0, max = 0;
+    const breakdown = [];
+
+    Object.keys(PRICE_RULES).forEach(itemId => {
+      const ruleRoot = PRICE_RULES[itemId];
+
+      // Variant-based pricing (Garland)
+      if(ruleRoot && ruleRoot.byVariant){
+        const obj = state.current.counts?.[itemId] || {};
+        Object.entries(obj).forEach(([variant, qty]) => {
+          const n = Number(qty || 0);
+          if(!n) return;
+
+          const rule = getPriceRule(itemId, variant);
+          if(!rule) return;
+
+          const lo = n * rule.min;
+          const hi = n * rule.max;
+          min += lo; max += hi;
+          breakdown.push(`${rule.label}: ${n} → ${fmtMoney(lo)}–${fmtMoney(hi)}`);
+        });
+        return;
+      }
+
+      // Item-based pricing (C9, Minis)
+      const qty = sumItemQty(itemId);
+      if(qty){
+        const lo = qty * ruleRoot.min;
+        const hi = qty * ruleRoot.max;
+        min += lo; max += hi;
+        breakdown.push(`${ruleRoot.label}: ${qty} → ${fmtMoney(lo)}–${fmtMoney(hi)}`);
+      }
+    });
+
+    return { min, max, breakdown };
+  }
+
+  function renderPriceBox(){
+    const r = getCustomerPriceRange();
+    if(priceRangeTextEl) priceRangeTextEl.textContent = `${fmtMoney(r.min)} – ${fmtMoney(r.max)}`;
+
+    if(priceBreakdownTextEl){
+      if(r.breakdown.length){
+        priceBreakdownTextEl.textContent = r.breakdown.map(s => `• ${s}`).join("\n");
+      }else{
+        priceBreakdownTextEl.textContent = "No priced items counted yet (C9 + Minis + Garland).";
+      }
+    }
+  }
+
+  // ---------- Undo ----------
+  const undoStack = [];
+  const redoStack = [];
+  const UNDO_LIMIT = 80;
+
+  function snapshotState(){
+    return {
+      quickMode: !!state.quickMode,
+      selectedItemId: state.selectedItemId || "c9",
+      current: deepClone(state.current),
+      records: deepClone(state.records)
+    };
+  }
+
+  function updateUndoButton(){
+    if(btnUndoEl) btnUndoEl.disabled = undoStack.length === 0;
+    if(btnRedoEl) btnRedoEl.disabled = redoStack.length === 0;
+  }
+
+  function pushUndo(){
+    undoStack.push(snapshotState());
+    if(undoStack.length > UNDO_LIMIT) undoStack.shift();
+    redoStack.length = 0;
+    updateUndoButton();
+  }
+
+  function undo(){
+    if(!undoStack.length) return;
+    redoStack.push(snapshotState());
+    if(redoStack.length > UNDO_LIMIT) redoStack.shift();
+    const prev = undoStack.pop();
+    state.quickMode = !!prev.quickMode;
+    state.selectedItemId = prev.selectedItemId || "c9";
+    state.current = deepClone(prev.current);
+    state.records = deepClone(prev.records || []);
+    save({ currentDirty: true });
+    syncFormFromState();
+    renderAll();
+    toast("Undid last change");
+    updateUndoButton();
+  }
+
+  function redo(){
+    if(!redoStack.length) return;
+    undoStack.push(snapshotState());
+    if(undoStack.length > UNDO_LIMIT) undoStack.shift();
+    const next = redoStack.pop();
+    state.quickMode = !!next.quickMode;
+    state.selectedItemId = next.selectedItemId || "c9";
+    state.current = deepClone(next.current);
+    state.records = deepClone(next.records || []);
+    save({ currentDirty: true });
+    syncFormFromState();
+    renderAll();
+    toast("Redid change");
+    updateUndoButton();
+  }
+
+  // ---------- Core ----------
+  function setSelectedItem(itemId){
+    state.selectedItemId = itemId;
+    renderItems();
+    renderColors();
+  }
+
+  function ensureCounts(itemId){
+    if(!state.current.counts[itemId]) state.current.counts[itemId] = {};
+  }
+
+  function getCount(itemId, variantKey){
+    const key = variantKey || "";
+    return Number(state.current.counts?.[itemId]?.[key] || 0);
+  }
+
+  function addCount(itemId, variantKey, qty){
+    pushUndo();
+    ensureCounts(itemId);
+    const key = variantKey || "";
+    const prev = Number(state.current.counts[itemId][key] || 0);
+    state.current.counts[itemId][key] = prev + Number(qty || 0);
+    save({ currentDirty: true });
+    renderCountsPreview();
+    renderItems();
+    renderQrPreview();
+    renderPriceBox();
+  }
+
+  function setCount(itemId, variantKey, qty){
+    pushUndo();
+    ensureCounts(itemId);
+    const key = variantKey || "";
+    const n = Number(qty || 0);
+
+    if(n <= 0){
+      delete state.current.counts[itemId][key];
+      if(Object.keys(state.current.counts[itemId] || {}).length === 0){
+        delete state.current.counts[itemId];
+      }
+    }else{
+      state.current.counts[itemId][key] = n;
+    }
+
+    save({ currentDirty: true });
+    renderCountsPreview();
+    renderItems();
+    renderQrPreview();
+    renderPriceBox();
+  }
+
+  function getItemTotal(itemId){
+    const obj = state.current.counts[itemId] || {};
+    return Object.values(obj).reduce((a,b)=>a+Number(b||0), 0);
+  }
+
+  function normalizeBinEntry(x){
+    // Supports legacy strings like "012" by defaulting them to Small
+    if(typeof x === "string"){
+      const code = formatBin3(x);
+      if(!code) return null;
+      return { size: "S", code };
+    }
+    if(x && typeof x === "object"){
+      const size = (x.size === "L") ? "L" : "S";
+      const code = formatBin3(x.code);
+      if(!code) return null;
+      return { size, code };
+    }
+    return null;
+  }
+
+  function binsToString(bins){
+    return (bins || [])
+      .map(normalizeBinEntry)
+      .filter(Boolean)
+      .map(b => `${b.size}-${b.code}`)
+      .join("; ");
+  }
+  // ---------- Season Totals (by item) ----------
+  function getSeasonTotals(){
+    // Sum across SAVED records for the current season
+    const totals = {};
+    ITEMS.forEach(it => totals[it.id] = 0);
+
+    (state.records || [])
+      .filter(r => Number(r.season || seasonYear) === Number(seasonYear))
+      .forEach(rec => {
+        ITEMS.forEach(item => {
+          const obj = rec.counts?.[item.id] || {};
+          const sum = Object.values(obj).reduce((a,b)=>a+Number(b||0), 0);
+          totals[item.id] += sum;
+        });
+      });
+
+    return totals;
+  }
+
+  function renderSeasonStats(){
+    if(!seasonStatsEl) return;
+
+    const totals = getSeasonTotals();
+
+    // Optional grand total (all items combined)
+    const grand = Object.values(totals).reduce((a,b)=>a+Number(b||0), 0);
+
+    // Build bubbles in the same style as Current Counts
+    const parts = [];
+
+    // Grand total first (nice “wow” factor)
+    parts.push(`<span class="bubble" title="All items (saved customers, this season)"><b>Total:</b> ${grand}</span>`);
+
+    ITEMS.forEach(item => {
+      const n = Number(totals[item.id] || 0);
+      parts.push(`<span class="bubble" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}: ${n}</span>`);
+    });
+
+    seasonStatsEl.innerHTML = parts.join("");
+  }
+  function updateStatus(){
+    if(statusNameEl) statusNameEl.textContent = state.current.customerName?.trim() || "—";
+    if(statusBinsEl) statusBinsEl.textContent = state.current.bins?.length ? binsToString(state.current.bins) : "—";
+    if(statusTimerEl) statusTimerEl.textContent = state.current.timerSetting || "—";
+    if(statusRemovalEl) statusRemovalEl.textContent = state.current.removalDate || "—";
+  }
+
+  function normalizeBin(v){
+    let s = String(v || "").trim();
+    s = s.replace(/\D/g, "");
+    s = s.slice(0,3);
+    return s;
+  }
+
+  function formatBin3(v){
+    const s = normalizeBin(v);
+    if(!s) return "";
+    return s.padStart(3, "0").slice(-3);
+  }
+
+  function addBin(bin, size){
+    const code = formatBin3(bin);
+    if(!code) return;
+
+    const entry = normalizeBinEntry({ size, code });
+    if(!entry) return;
+
+    const owner = findBinOwnerRecord(entry);
+    if(owner){
+      toast(`BIN ${entry.size}-${entry.code} is already being used for ${owner.customerName || "another customer"}`, 3200);
+      return;
+    }
+
+    // Ensure bins array exists and is normalized
+    if(!Array.isArray(state.current.bins)) state.current.bins = [];
+    state.current.bins = state.current.bins.map(normalizeBinEntry).filter(Boolean);
+
+    const exists = state.current.bins.some(x => x.size === entry.size && x.code === entry.code);
+    if(!exists){
+      pushUndo();
+      state.current.bins.push(entry);
+      save({ currentDirty: true });
+      renderBins();
+      updateStatus();
+      renderQrPreview();
+      toast(`BIN added: ${entry.size}-${entry.code}`);
+    }else{
+      toast("BIN already added");
+    }
+  }
+
+  function removeBin(size, code){
+    pushUndo();
+    state.current.bins = (state.current.bins || [])
+      .map(normalizeBinEntry)
+      .filter(Boolean)
+      .filter(x => !(x.size === size && x.code === code));
+    save({ currentDirty: true });
+    renderBins();
+    updateStatus();
+    renderQrPreview();
+  }
+
+  function renderBinsInWrap(wrapEl, editable){
+    if(!wrapEl) return;
+    [...wrapEl.querySelectorAll(".bin-tag")].forEach(n => n.remove());
+    const addRow = wrapEl.querySelector(".bin-add");
+
+    const normalized = (state.current.bins || []).map(normalizeBinEntry).filter(Boolean);
+    state.current.bins = normalized;
+
+    normalized.forEach(b => {
+      const label = `${b.size}-${b.code}`;
+
+      const tag = document.createElement("div");
+      tag.className = "bin-tag";
+      tag.innerHTML = `<span>${escapeHtml(label)}</span>`;
+
+      if(editable){
+        const x = document.createElement("div");
+        x.className = "x";
+        x.textContent = "×";
+        x.addEventListener("click", (e) => { e.stopPropagation(); removeBin(b.size, b.code); });
+        tag.appendChild(x);
+      }
+
+      wrapEl.insertBefore(tag, addRow || null);
+    });
+  }
+
+  function renderBins(){
+    renderBinsInWrap(binsWrapEl, false);
+    renderBinsInWrap(binsWrapJobEl, true);
+  }
+
+  // ---------- Item + Variant UI ----------
+  function renderItems(){
+    itemGridEl.innerHTML = "";
+    ITEMS.forEach(item => {
+      const tile = document.createElement("div");
+      tile.className = "tile" + (state.selectedItemId === item.id ? " selected" : "");
+      const total = getItemTotal(item.id);
+      const sub = item.needsColor ? `Tap → pick ${String(item.label || "color").toLowerCase()}` : "Tap → enter qty";
+      tile.innerHTML = `
+        <div>
+          <div class="t">${escapeHtml(item.name)}</div>
+          <div class="k">${escapeHtml(sub)} • unit: ${escapeHtml(item.unit)}</div>
+        </div>
+        <div class="v">${total}</div>
+      `;
+
+      tile.addEventListener("click", () => {
+        setSelectedItem(item.id);
+
+        if(!item.needsColor){
+          if(state.quickMode){
+            addCount(item.id, "", 1);
+            toast(`${item.name}: +1`);
+          }else{
+            openKeypad({ mode:"QTY", item, variant:"", unit:item.unit });
+          }
+        }
+      });
+
+      attachLongPress(tile, () => {
+        if(!item.needsColor && state.quickMode){
+          addCount(item.id, "", 5);
+          toast(`${item.name}: +5`);
+        }
+      });
+
+      itemGridEl.appendChild(tile);
+    });
+  }
+
+  function renderColors(){
+    const selected = ITEMS.find(x => x.id === state.selectedItemId) || ITEMS[0];
+    if(!selected) return;
+
+    if(!selected.needsColor){
+      colorsTitleEl.textContent = "No Color/Size Needed";
+      colorsSubEl.textContent = "This item is entered without a color/size.";
+      colorGridEl.innerHTML = "";
+      return;
+    }
+
+    const label = selected.label || "Color";
+    colorsTitleEl.textContent = `Then Tap a ${label} (${selected.name})`;
+
+    // Mini wire UI toggle + dynamic colors
+    const isMini = selected.id === "mini";
+    if(miniWireRowEl) miniWireRowEl.style.display = isMini ? "flex" : "none";
+
+    if(isMini){
+      // button active state
+      if(btnMiniWireGreenEl) btnMiniWireGreenEl.classList.toggle("is-active", state.miniWire === "Green");
+      if(btnMiniWireWhiteEl) btnMiniWireWhiteEl.classList.toggle("is-active", state.miniWire === "White");
+    }
+
+    colorsSubEl.textContent = state.quickMode
+      ? `Quick Add ON: tap ${label.toLowerCase()} for +1, hold for +5. (Turn OFF to open keypad.)`
+      : `Quick Add OFF: tap a ${label.toLowerCase()} to open the big keypad.`;
+
+    // Choose the right variant list
+    const variants = isMini
+      ? (state.miniWire === "White" ? MINI_COLORS_WHITE : MINI_COLORS_GREEN)
+      : (selected.colors || []);
+
+    colorGridEl.innerHTML = "";
+    variants.forEach(colorName => {
+      // ANCHOR: COLOR_BUTTON_CREATE
+      const btn = document.createElement("div");
+      btn.className = "color-btn";
+
+      // Only use text pill for striped buttons
+      if (
+        (selected.id === "mini" && colorName === "Candy Cane") ||
+        (selected.id === "icicle" && colorName === "Blue & White")
+      ) {
+        // Striped buttons need escaped text inside the pill
+        btn.innerHTML = `<span class="color-label">${escapeHtml(colorName)}</span>`;
+      } 
+      else if (selected.id === "garland") {
+        // Garland sizes intentionally contain <br>
+        btn.innerHTML = colorName;
+      }
+      else {
+        // All other buttons are safe as plain text
+        btn.textContent = colorName;
+      }
+
+      const colorStyle = getColorStyle(colorName);
+
+      // Special striped cases
+      if(selected.id === "mini" && colorName === "Candy Cane"){
+        btn.classList.add("color-striped-red-white");
+        btn.style.borderColor = "rgba(0,0,0,.2)";
+      }
+      else if(selected.id === "icicle" && colorName === "Blue & White"){
+        btn.classList.add("color-striped-blue-white");
+        btn.style.borderColor = "rgba(0,0,0,.2)";
+      }
+      else if(colorStyle){
+        if(colorStyle.startsWith("linear-gradient")){
+          btn.style.background = colorStyle;
+          btn.style.color = "#111";
+        }else{
+          btn.style.background = colorStyle;
+          btn.style.color = isLightColor(colorStyle) ? "#111" : "#fff";
+        }
+        btn.style.borderColor = "rgba(0,0,0,.15)";
+      }
+
+      // Store minis as "Wire|Color" so green/white are tracked separately
+      const variantKey = isMini ? miniVariantKey(state.miniWire, colorName) : colorName;
+
+      btn.addEventListener("click", () => {
+        if(state.quickMode){
+          addCount(selected.id, variantKey, 1);
+          toast(`${selected.name} • ${variantDisplay(selected.id, variantKey)}: +1`);
+        }else{
+          openKeypad({ mode:"QTY", item: selected, variant: variantKey, unit: selected.unit });
+        }
+      });
+
+      attachLongPress(btn, () => {
+        if(state.quickMode){
+          addCount(selected.id, variantKey, 5);
+          toast(`${selected.name} • ${variantDisplay(selected.id, variantKey)}: +5`);
+        }
+      });
+
+      colorGridEl.appendChild(btn);
+    });
+  }
+
+  function renderCountsPreview(){
+    const lines = [];
+    ITEMS.forEach(item => {
+      const obj = state.current.counts[item.id] || {};
+      const entries = Object.entries(obj).filter(([,v]) => Number(v||0) !== 0);
+      if(entries.length === 0) return;
+
+      if(item.needsColor){
+        entries.sort((a,b) => a[0].localeCompare(b[0]));
+        const label = item.label || "Color";
+        lines.push(`<div style="margin-bottom:10px;"><b>${escapeHtml(item.name)}</b> (${escapeHtml(item.unit)}) • ${escapeHtml(label)}</div>`);
+        lines.push(`<div class="count-bubbles">${
+          entries.map(([variant, qty]) => `
+            <span
+              class="bubble"
+              role="button"
+              tabindex="0"
+              data-item-id="${escapeHtml(item.id)}"
+              data-variant="${escapeHtml(String(variant))}"
+              title="Tap to edit"
+            >${escapeHtml(variantDisplay(item.id, String(variant)))}: ${Number(qty)}</span>
+          `).join("")
+        }</div>`);
+      }else{
+        const qty = Number(obj[""] || 0);
+        lines.push(`<div style="margin-bottom:12px;"><b>${escapeHtml(item.name)}</b>: <span style="font-weight:1000;">${qty}</span> (${escapeHtml(item.unit)})</div>`);
+      }
+    });
+
+    countsPreviewEl.innerHTML = lines.length ? lines.join("") : "— No counts yet.";
+  }
+
+  // ---------- Long-press helper ----------
+  function attachLongPress(el, onLong){
+    let timer = null;
+    const start = () => {
+      if(timer) clearTimeout(timer);
+      timer = setTimeout(() => { timer = null; onLong(); }, 450);
+    };
+    const cancel = () => { if(timer) clearTimeout(timer); timer = null; };
+
+    el.addEventListener("touchstart", start, {passive:true});
+    el.addEventListener("touchend", cancel, {passive:true});
+    el.addEventListener("touchmove", cancel, {passive:true});
+    el.addEventListener("touchcancel", cancel, {passive:true});
+
+    el.addEventListener("mousedown", start);
+    el.addEventListener("mouseup", cancel);
+    el.addEventListener("mouseleave", cancel);
+  }
+
+  // ---------- Keypad Modal (QTY + BIN + SET) ----------
+  const keypadState = { mode:"QTY", item:null, variant:"", unit:"", value:"0", binSize:"" };
+
+  function openKeypad({ mode="QTY", item=null, variant="", unit="" }){
+    keypadState.mode = mode;
+    keypadState.item = item;
+    keypadState.variant = variant || "";
+    keypadState.unit = unit || "";
+
+    // Toggle native input vs on-screen keypad (iPhone/iPad uses system keyboard)
+    if(qtyNativeInputEl){
+      qtyNativeInputEl.style.display = USE_NATIVE_INPUT ? "block" : "none";
+      if(USE_NATIVE_INPUT){
+        qtyNativeInputEl.value = "";
+        qtyNativeInputEl.placeholder = (mode === "BIN") ? "Enter BIN number" : "Enter quantity";
+      }
+    }
+    if(keypadEl) keypadEl.style.display = USE_NATIVE_INPUT ? "none" : "";
+
+    if(mode === "BIN"){
+      keypadState.value = "0";
+      keypadState.binSize = ""; // required
+
+      modalTitleEl.textContent = "Enter BIN #";
+      modalMetaEl.textContent = "Select bin size, then enter BIN number (auto-padded)";
+      qtyLabelEl.textContent = "BIN #";
+      btnAddQtyEl.textContent = "Add BIN";
+      modalFootnoteEl.textContent = "Adds a BIN tag to this customer.";
+      qtyValueEl.textContent = keypadState.value;
+
+      // Show size selector + force selection
+      if(binSizeRowEl) binSizeRowEl.style.display = "flex";
+      if(binSizeHintEl) binSizeHintEl.style.display = "block";
+      if(btnBinSizeSmallEl) btnBinSizeSmallEl.classList.remove("is-active");
+      if(btnBinSizeLargeEl) btnBinSizeLargeEl.classList.remove("is-active");
+
+      // Disable until size is chosen AND 3 digits entered
+      if(btnAddQtyEl) btnAddQtyEl.disabled = true;
+
+      modalBackdropEl.style.display = "flex";
+      return;
+    }
+
+    // Hide BIN size UI for QTY / SET modes
+    if(binSizeRowEl) binSizeRowEl.style.display = "none";
+    if(binSizeHintEl) binSizeHintEl.style.display = "none";
+    if(btnAddQtyEl) btnAddQtyEl.disabled = false;
+
+    const metaLine =
+      item && item.needsColor
+        ? `${item.name} • ${keypadState.variant.replace(/<br>/g," ")} • unit: ${unit}`
+        : `${item?.name || ""} • unit: ${unit}`;
+
+    modalMetaEl.textContent = metaLine;
+
+    if(mode === "SET"){
+      const cur = getCount(item.id, keypadState.variant);
+      keypadState.value = String(cur || 0);
+
+      modalTitleEl.textContent = "Edit Quantity";
+      qtyLabelEl.textContent = "Set qty";
+      btnAddQtyEl.textContent = "Set Qty";
+      modalFootnoteEl.textContent = "Sets the quantity (set to 0 to remove this entry).";
+      qtyValueEl.textContent = keypadState.value;
+      modalBackdropEl.style.display = "flex";
+      return;
+    }
+
+    keypadState.value = "0";
+    modalTitleEl.textContent = "Enter Quantity to Add";
+    qtyLabelEl.textContent = "Qty to add";
+    btnAddQtyEl.textContent = "Add Qty";
+    modalFootnoteEl.textContent = "Adds to existing quantity for this item/color/size.";
+    qtyValueEl.textContent = keypadState.value;
+    modalBackdropEl.style.display = "flex";
+  }
+
+  function closeKeypad(){
+    modalBackdropEl.style.display = "none";
+    if(qtyNativeInputEl){
+      try{ qtyNativeInputEl.blur(); }catch(e){}
+      qtyNativeInputEl.value = "";
+    }
+  }
+
+  function setKeypadValue(v){
+    keypadState.value = v;
+    qtyValueEl.textContent = keypadState.value;
+    if(USE_NATIVE_INPUT && qtyNativeInputEl){
+      // Keep native input in sync (show blank instead of 0)
+      qtyNativeInputEl.value = (keypadState.value === "0") ? "" : keypadState.value;
+    }
+
+    // BIN mode gating: require size + 3 digits
+if(keypadState.mode === "BIN"){
+  const sizeOk = (keypadState.binSize === "S" || keypadState.binSize === "L");
+  const digits = String(keypadState.value || "").replace(/\D/g, "");
+  const binOk = (digits.length >= 1 && digits.length <= 3);
+
+  if(btnAddQtyEl) btnAddQtyEl.disabled = !(sizeOk && binOk);
+  if(binSizeHintEl) binSizeHintEl.style.display = sizeOk ? "none" : "block";
+}
+  }
+
+  function buildKeypad(){
+    const keys = ["1","2","3","4","5","6","7","8","9","C","0","⌫"];
+    keypadEl.innerHTML = "";
+    keys.forEach(k => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "key";
+      b.textContent = k;
+
+      b.addEventListener("click", () => {
+        if(k === "C") return setKeypadValue("0");
+        if(k === "⌫"){
+          const s = keypadState.value;
+          const next = s.length <= 1 ? "0" : s.slice(0,-1);
+          return setKeypadValue(next);
+        }
+
+        if(keypadState.mode === "BIN"){
+          const next = (keypadState.value === "0") ? k : (keypadState.value + k);
+          const trimmed = next.replace(/\D/g, "").slice(0,3);
+          return setKeypadValue(trimmed || "0");
+        }
+
+        if(keypadState.value === "0") setKeypadValue(k);
+        else setKeypadValue(keypadState.value + k);
+      });
+
+      keypadEl.appendChild(b);
+    });
+  }
+
+  // ---------- Records ----------
+  function currentIsValid(){
+    const name = (state.current.customerName || "").trim();
+    return name.length > 0;
+  }
+
+  function saveCustomerRecord(){
+    if(!currentIsValid()){
+      toast("Enter Customer Name first");
+      return;
+    }
+    clearTimeout(_recordAutosaveTimer);
+    const rec = deepClone(state.current);
+    ensureCustomerFields(rec);
+    rec.savedAt = new Date().toISOString();
+
+    const keyName = rec.customerName.trim().toLowerCase();
+    const idx = state.records.findIndex(r =>
+      (r.season === rec.season) && (String(r.customerName||"").trim().toLowerCase() === keyName)
+    );
+    if(idx >= 0) state.records[idx] = rec;
+    else state.records.unshift(rec);
+
+    save({ currentDirty: false });
+    renderRecords();
+    toast("Customer saved");
+
+    startNewCustomer({ focusName:false, openChecklist:false, toastMsg:"Ready for next customer" });
+  }
+
+  function startNewCustomer(opts){
+    const o = opts || {};
+    const doFocus = (o.focusName !== false) && !PREFER_NATIVE_TEXT_DESKTOP; // desktop: let user decide
+    const openChecklist = (o.openChecklist !== false);
+
+    clearTimeout(_recordAutosaveTimer);
+    pushUndo();
+state.current = {
+  season: seasonYear,
+  customerName: "",
+  company: "",
+  phone: "",
+  address: "",
+  bins: [],
+  timerSetting: "",
+  removalDate: todayISO(),
+  notes: "",
+  counts: {},
+  jobChecklist: {
+    liftRequired: false,
+    goatAssist: false,
+    gutterGuards: false,
+    roofType: "",
+    powerLocation: "",
+    outletUsed: "",
+    installNotes: "",
+    maintenanceNotes: "",
+    removalNotes: ""
+  }
+};
+    save({ currentDirty: false });
+    syncFormFromState();
+    renderAll();
+
+    // Only autofocus when explicitly starting a new customer (not after Save)
+    if(doFocus) customerNameEl.focus();
+    if(openChecklist) openJobModal();
+
+    toast(o.toastMsg || "New customer ready");
+  }
+
+  function clearCurrentCounts(){
+    pushUndo();
+    state.current.counts = {};
+    save({ currentDirty: true });
+    renderItems();
+    renderCountsPreview();
+    renderQrPreview();
+    renderPriceBox();
+    toast("Counts cleared");
+  }
+
+  function loadRecordToCurrent(i){
+    const rec = state.records[i];
+    if(!rec) return;
+    clearTimeout(_recordAutosaveTimer);
+    pushUndo();
+    state.current = deepClone(rec);
+    ensureCustomerFields(state.current);
+    if(typeof state.current.notes !== "string") state.current.notes = "";
+    if(!state.current.counts) state.current.counts = {};
+    if(!Array.isArray(state.current.bins)) state.current.bins = [];
+    save({ currentDirty: false });
+    syncFormFromState();
+    renderAll();
+    closeCustomersModal();
+    toast("Loaded customer");
+  }
+
+  function deleteRecord(i){
+    const rec = state.records[i];
+    if(!rec) return;
+    pushUndo();
+    state.records.splice(i,1);
+    save();
+    renderRecords();
+    toast("Deleted record");
+  }
+
+  function renderRecords(){
+    if(!recordsListEl) return;
+
+    recordsListEl.innerHTML = "";
+    if(!state.records.length){
+      if(customersModalSummaryEl) customersModalSummaryEl.textContent = "0 customer records";
+      recordsListEl.innerHTML = `<div class="muted">No saved customers yet.</div>`;
+      return;
+    }
+
+    const q = String(customersSearchTerm || "").trim().toLowerCase();
+    const filtered = state.records
+      .map((r, i) => ({ r, i }))
+      .filter(({ r }) => {
+        ensureCustomerFields(r);
+        if(!q) return true;
+        const hay = [
+          r.customerName || "",
+          r.company || "",
+          r.phone || "",
+          r.address || "",
+          r.timerSetting || "",
+          binsToString(r.bins || [])
+        ].join(" ").toLowerCase();
+        return hay.includes(q);
+      });
+
+    if(customersModalSummaryEl){
+      customersModalSummaryEl.textContent = `${filtered.length} shown of ${state.records.length} saved`;
+    }
+    if(!filtered.length){
+      recordsListEl.innerHTML = `<div class="muted">No customers match your search.</div>`;
+      return;
+    }
+
+    const sorted = filtered.slice().sort((a, b) => {
+      if(customersSortMode === "name_asc"){
+        return String(a.r.customerName || "").localeCompare(String(b.r.customerName || ""), undefined, { sensitivity: "base" });
+      }
+      if(customersSortMode === "name_desc"){
+        return String(b.r.customerName || "").localeCompare(String(a.r.customerName || ""), undefined, { sensitivity: "base" });
+      }
+      const ta = Date.parse(a.r.savedAt || "") || 0;
+      const tb = Date.parse(b.r.savedAt || "") || 0;
+      if(customersSortMode === "last_saved_asc") return ta - tb;
+      return tb - ta; // default: newest first
+    });
+
+    sorted.forEach(({ r, i }) => {
+      const totalAll = ITEMS.reduce((sum, it) => {
+        const obj = r.counts?.[it.id] || {};
+        return sum + Object.values(obj).reduce((a,b)=>a+Number(b||0),0);
+      }, 0);
+
+      const div = document.createElement("div");
+      div.className = "record";
+      div.innerHTML = `
+        <div class="left">
+          <div class="name">${escapeHtml(r.customerName || "—")}</div>
+          <div class="section">
+            <div class="section-title">Identity</div>
+            <div class="section-line">Season: ${escapeHtml(String(r.season || seasonYear))}</div>
+            <div class="section-line">Company: ${escapeHtml(r.company || "—")}</div>
+          </div>
+          <div class="section">
+            <div class="section-title">Contact</div>
+            <div class="section-line">Phone: ${escapeHtml(r.phone || "—")}</div>
+            <div class="section-line">Address: ${escapeHtml(r.address || "—")}</div>
+          </div>
+          <div class="section">
+            <div class="section-title">Inventory</div>
+            <div class="section-line">Total entries: ${totalAll}</div>
+            <div class="section-line">BINs: ${escapeHtml(r.bins?.length ? binsToString(r.bins) : "—")}</div>
+            <div class="section-line">Timer: ${escapeHtml(r.timerSetting || "—")} • Removal: ${escapeHtml(r.removalDate || "—")}</div>
+          </div>
+        </div>
+        <div class="right">
+          <button class="btn-ghost" type="button" data-act="load">Load</button>
+          <button class="btn-danger" type="button" data-act="del">Delete</button>
+        </div>
+      `;
+      div.querySelector('[data-act="load"]').addEventListener("click", () => loadRecordToCurrent(i));
+      div.querySelector('[data-act="del"]').addEventListener("click", () => deleteRecord(i));
+      recordsListEl.appendChild(div);
+    });
+  }
+
+  // ---------- CSV Export (WITH price ranges) ----------
+  function exportCSV(){
+    if(!state.records.length){
+      toast("No saved customers to export");
+      return;
+    }
+
+    const rows = [];
+const headers = [
+  "Season",
+  "Customer Name",
+  "Company",
+  "Phone",
+  "Address",
+  "Removal Date",
+  "Timer Setting",
+  "BIN #s",
+  "Notes",
+  "Lift Required",
+  "Goat Assist",
+  "Gutter Guards",
+  "Roof Type",
+  "Power Location",
+  "Outlet Used",
+  "Install Notes",
+  "Maintenance Notes",
+  "Removal Notes",
+  "Photo Count",
+  "Photo Names",
+  "Customer Est Price Min",
+  "Customer Est Price Max",
+  "Item",
+  "Color/Size",
+  "Qty",
+  "Unit",
+  "Line Price Min",
+  "Line Price Max",
+  "Price Rule"
+];
+    rows.push(headers);
+
+    state.records.forEach(rec => {
+      ensureCustomerFields(rec);
+      // customer-level estimate
+      const tempCurrent = state.current;
+      state.current = rec;
+      const custRange = getCustomerPriceRange();
+      state.current = tempCurrent;
+
+const jc = rec.jobChecklist || {};
+
+const photos = Array.isArray(jc.photos) ? jc.photos : [];
+const photoNames = photos.map(p => (p && p.name) ? String(p.name) : "Photo").join("; ");
+
+const base = [
+  rec.season || seasonYear,
+  rec.customerName || "",
+  rec.company || "",
+  rec.phone || "",
+  rec.address || "",
+  rec.removalDate || "",
+  rec.timerSetting || "",
+  binsToString(rec.bins || []),
+  (rec.notes || "").replace(/\s+/g, " ").trim(),
+  jc.liftRequired ? "Yes" : "No",
+  jc.goatAssist ? "Yes" : "No",
+  jc.gutterGuards ? "Yes" : "No",
+  jc.roofType || "",
+  jc.powerLocation || "",
+  jc.outletUsed || "",
+  jc.installNotes || "",
+  jc.maintenanceNotes || "",
+  jc.removalNotes || "",
+  photos.length,
+  photoNames,
+  custRange.min,
+  custRange.max
+];
+
+      ITEMS.forEach(item => {
+        const obj = rec.counts?.[item.id] || {};
+        if(item.needsColor){
+          Object.entries(obj).forEach(([variant, qty]) => {
+            const n = Number(qty || 0);
+            if(!n) return;
+
+            const rule = getPriceRule(item.id, variant);
+            const lineMin = rule ? (n * rule.min) : "";
+            const lineMax = rule ? (n * rule.max) : "";
+            const ruleLabel = rule ? (rule.label || "") : "";
+
+            rows.push([
+              ...base,
+              item.name,
+              variantExportLabel(item.id, String(variant)),
+              n,
+              item.unit,
+              lineMin,
+              lineMax,
+              ruleLabel
+            ]);
+          });
+        }else{
+          const n = Number(obj[""] || 0);
+          if(!n) return;
+
+          const rule = PRICE_RULES[item.id] || null;
+          const lineMin = rule ? (n * rule.min) : "";
+          const lineMax = rule ? (n * rule.max) : "";
+          const ruleLabel = rule ? rule.label : "";
+
+          rows.push([
+            ...base,
+            item.name,
+            "",
+            n,
+            item.unit,
+            lineMin,
+            lineMax,
+            ruleLabel
+          ]);
+        }
+      });
+    });
+
+    const csv = rows.map(r => r.map(csvEscape).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `customer-inventory_${seasonYear}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    toast("CSV exported");
+  }
+
+  function csvEscape(v){
+    const s = String(v ?? "");
+    if(/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+    return s;
+  }
+
+  // ---------- CSV Import ----------
+  function importCSVFile(file){
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        // Strip UTF-8 BOM if present (common from Excel)
+        const raw = String(reader.result || "").replace(/^\uFEFF/, "");
+        const rows = parseCsvRows(raw);
+        if(rows.length < 2){
+          toast("CSV appears empty");
+          return;
+        }
+
+        const headersRaw = rows[0].map(h => String(h || "").trim());
+        const headersNorm = headersRaw.map(h => h.toLowerCase());
+        const idx = (name) => headersNorm.indexOf(String(name).toLowerCase());
+
+        // Validate this is our exported format (case-insensitive)
+        const mustHave = ["season","customer name","item","qty"];
+        for(const k of mustHave){
+          if(idx(k) === -1){
+            toast("This CSV doesn't look like an export from this app");
+            return;
+          }
+        }
+
+        const byCustomer = {};
+
+        for(let i=1;i<rows.length;i++){
+          const cols = rows[i];
+          if(!cols || cols.every(v => String(v || "").trim() === "")) continue;
+          const get = (h) => {
+            const j = idx(h);
+            return j >= 0 ? (cols[j] ?? "") : "";
+          };
+
+          const season = Number(get("Season"));
+          const name = String(get("Customer Name") || "").trim();
+          if(!season || !name) continue;
+
+          const key = season + "::" + name.toLowerCase();
+
+          if(!byCustomer[key]){
+            const jc = {
+              liftRequired: String(get("Lift Required")) === "Yes",
+              goatAssist: String(get("Goat Assist")) === "Yes",
+              gutterGuards: String(get("Gutter Guards")) === "Yes",
+              roofType: String(get("Roof Type") || ""),
+              powerLocation: String(get("Power Location") || ""),
+              outletUsed: String(get("Outlet Used") || ""),
+              installNotes: String(get("Install Notes") || ""),
+              maintenanceNotes: String(get("Maintenance Notes") || ""),
+              removalNotes: String(get("Removal Notes") || ""),
+              photos: [] // CSV import doesn't carry photo blobs; keep empty
+            };
+
+            byCustomer[key] = {
+              season,
+              customerName: name,
+              company: String(get("Company") || ""),
+              phone: String(get("Phone") || ""),
+              address: String(get("Address") || ""),
+              removalDate: String(get("Removal Date") || ""),
+              timerSetting: String(get("Timer Setting") || ""),
+              bins: parseBinsString(get("BIN #s")),
+              notes: String(get("Notes") || ""),
+              counts: {},
+              jobChecklist: jc
+            };
+          }
+
+          const itemName = String(get("Item") || "").trim();
+          const item = ITEMS.find(it => it.name === itemName);
+          if(!item) continue;
+
+          const qty = Number(get("Qty") || 0);
+          if(!qty) continue;
+
+          const label = String(get("Color/Size") || "").trim();
+          const variantKey = importVariantKey(item.id, label);
+
+          if(!byCustomer[key].counts[item.id]) byCustomer[key].counts[item.id] = {};
+          const bucket = byCustomer[key].counts[item.id];
+
+          // needsColor items store per-variant; others store in "" key
+          const kVar = item.needsColor ? variantKey : "";
+          bucket[kVar] = (Number(bucket[kVar] || 0) + qty);
+        }
+
+        const imported = Object.values(byCustomer);
+        imported.forEach(ensureCustomerFields);
+        if(!imported.length){
+          toast("Nothing to import");
+          return;
+        }
+
+        imported.forEach(rec => {
+          const existingIdx = state.records.findIndex(r =>
+            Number(r.season) === Number(rec.season) &&
+            String(r.customerName || "").toLowerCase() === String(rec.customerName || "").toLowerCase()
+          );
+          if(existingIdx >= 0) state.records[existingIdx] = rec;
+          else state.records.unshift(rec);
+        });
+
+        save();
+        renderRecords();
+        renderSeasonStats();
+        toast(`Imported ${imported.length} customer(s)`);
+      }catch(e){
+        console.error(e);
+        toast(`CSV import failed: ${e && e.message ? e.message : "unknown error"}`);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function parseCsvRows(text){
+    const rows = [];
+    let row = [];
+    let cur = "";
+    let inQuotes = false;
+
+    for(let i=0;i<text.length;i++){
+      const c = text[i];
+
+      if(c === '"'){
+        if(inQuotes && text[i+1] === '"'){
+          cur += '"';
+          i++;
+        }else{
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+
+      if(c === "," && !inQuotes){
+        row.push(cur);
+        cur = "";
+        continue;
+      }
+
+      if((c === "\n" || c === "\r") && !inQuotes){
+        if(c === "\r" && text[i+1] === "\n") i++;
+        row.push(cur);
+        rows.push(row);
+        row = [];
+        cur = "";
+        continue;
+      }
+
+      cur += c;
+    }
+
+    row.push(cur);
+    if(row.some(v => String(v).trim() !== "")) rows.push(row);
+
+    return rows;
+  }
+
+  function parseBinsString(str){
+    if(!str) return [];
+    // Accept either "S-001; L-120" OR legacy "001, 120"
+    const parts = String(str).split(";").map(s => s.trim()).filter(Boolean);
+    const out = [];
+    parts.forEach(p => {
+      const m = p.match(/^([SL])\s*-\s*(\d{1,3})$/i);
+      if(m){
+        out.push({ size: m[1].toUpperCase(), code: String(m[2]).padStart(3,"0") });
+      }else{
+        // Try raw numbers (default to Small)
+        const n = p.replace(/\D/g,"");
+        if(n) out.push({ size:"S", code:String(n).padStart(3,"0") });
+      }
+    });
+    return out;
+  }
+
+  function importVariantKey(itemId, label){
+    // Minis export as: "Warm White (Green Wire)" but store as "Green Wire|Warm White"
+    if(itemId === "mini"){
+      const s = String(label || "").trim();
+      const m = s.match(/^(.*)\s*\((Green Wire|White Wire)\)\s*$/i);
+      if(m){
+        const color = String(m[1] || "").trim();
+        const wire = String(m[2] || "").trim().replace(/\s+/g," ");
+        return `${wire}|${color}`;
+      }
+      if(s) return `Green Wire|${s}`;
+      return "Green Wire|Warm White";
+    }
+
+    const norm = (x) => String(x || "").replace(/\s+/g," ").trim().toLowerCase();
+    const target = norm(label);
+
+    // IMPORTANT: some installs don't define COLORS / MINI_COLORS_* / GARLAND_SIZES as globals.
+    // Use typeof checks to avoid ReferenceError.
+    const baseColors = (typeof COLORS !== "undefined" && Array.isArray(COLORS)) ? COLORS : [];
+    const miniG = (typeof MINI_COLORS_GREEN !== "undefined" && Array.isArray(MINI_COLORS_GREEN)) ? MINI_COLORS_GREEN : [];
+    const miniW = (typeof MINI_COLORS_WHITE !== "undefined" && Array.isArray(MINI_COLORS_WHITE)) ? MINI_COLORS_WHITE : [];
+    const allColors = [].concat(baseColors, miniG, miniW);
+
+    const hit = allColors.find(c => norm(c) === target);
+    if(hit) return hit;
+
+    // Garland sizes contain <br> in stored keys
+    if(itemId === "garland"){
+      const gs = (typeof GARLAND_SIZES !== "undefined" && Array.isArray(GARLAND_SIZES)) ? GARLAND_SIZES : [];
+      const found = gs.find(v => norm(String(v).replace(/<br\s*\/?>/gi," ")) === target);
+      if(found) return found;
+    }
+
+    return label || "";
+  }
+
+  // ---------- Form Sync ----------
+  function syncFormFromState(){
+  ensureCustomerFields(state.current);
+  customerNameEl.value = state.current.customerName || "";
+  if(customerCompanyEl) customerCompanyEl.value = state.current.company || "";
+  if(customerPhoneEl) customerPhoneEl.value = state.current.phone || "";
+  if(customerAddressEl) customerAddressEl.value = state.current.address || "";
+  if(customerNameJobEl) customerNameJobEl.value = state.current.customerName || "";
+  if(customerCompanyJobEl) customerCompanyJobEl.value = state.current.company || "";
+  if(customerPhoneJobEl) customerPhoneJobEl.value = state.current.phone || "";
+  if(customerAddressJobEl) customerAddressJobEl.value = state.current.address || "";
+  removalDateEl.value = state.current.removalDate || todayISO();
+  if(removalDateJobEl) removalDateJobEl.value = state.current.removalDate || todayISO();
+  timerSettingEl.value = state.current.timerSetting || "";
+  if(timerSettingJobEl) timerSettingJobEl.value = state.current.timerSetting || "";
+  if(notesInputEl) notesInputEl.value = state.current.notes || "";
+
+  // Checklist fields (safe defaults)
+  const jc = ensureJobChecklist();
+  if(chkLiftEl) chkLiftEl.checked = !!jc.liftRequired;
+  if(chkGoatEl) chkGoatEl.checked = !!jc.goatAssist;
+  if(chkGuttersEl) chkGuttersEl.checked = !!jc.gutterGuards;
+  if(roofTypeEl) roofTypeEl.value = jc.roofType || "";
+  if(powerLocationEl) powerLocationEl.value = jc.powerLocation || "";
+  if(outletUsedEl) outletUsedEl.value = jc.outletUsed || "";
+  if(installNotesEl) installNotesEl.value = jc.installNotes || "";
+  if(maintenanceNotesEl) maintenanceNotesEl.value = jc.maintenanceNotes || "";
+  if(removalNotesEl) removalNotesEl.value = jc.removalNotes || "";
+
+  renderChecklistPhotos();
+  renderBins();
+  updateStatus();
+}
+
+  // ---------- On-screen keyboard (Name + Notes) ----------
+  function kbGetActiveEl(){
+    if(kbTarget === "notes") return notesInputEl;
+    if(kbTarget === "name"){
+      if(customerNameJobEl && jobModalBackdropEl && jobModalBackdropEl.style.display === "flex") return customerNameJobEl;
+      return customerNameEl;
+    }
+
+    if(kbIsChecklistTarget()){
+      const key = kbChecklistKey();
+      if(key === "powerLocation") return powerLocationEl;
+      if(key === "outletUsed") return outletUsedEl;
+      if(key === "installNotes") return installNotesEl;
+      if(key === "maintenanceNotes") return maintenanceNotesEl;
+      if(key === "removalNotes") return removalNotesEl;
+    }
+
+    return null;
+  }
+
+  function kbRenderDisplay(){
+    const el = kbGetActiveEl();
+    const text = (el && el.value) ? el.value : "";
+    kbDisplayEl.innerHTML = text.length
+      ? `${escapeHtml(text)}<span class="caret"></span>`
+      : `—<span class="caret"></span>`;
+  }
+
+  function kbUpdateHeader(){
+    if(!kbTitleEl || !kbSubEl) return;
+    const meta = KB_TARGET_META[kbTarget] || KB_TARGET_META["notes"];
+    kbTitleEl.textContent = meta.title;
+    kbSubEl.textContent = meta.sub;
+  }
+
+function kbShow(target){
+  if(!uiScreenKeyboardEnabled()) return;
+
+  if(target) kbTarget = target;
+    kbUpdateHeader();
+    kbBackdropEl.style.display = "flex";
+    kbRenderKeys();
+    kbRenderDisplay();
+    kbRenderActionsActive();
+  }
+
+  function kbHide(){
+    kbBackdropEl.style.display = "none";
+    kbShift = false;
+    kbRenderActionsActive();
+  }
+
+  function kbSetShift(on){
+    kbShift = !!on;
+    kbRenderKeys();
+    kbRenderActionsActive();
+  }
+
+  function kbToggleCaps(){
+    kbCaps = !kbCaps;
+    kbRenderKeys();
+    kbRenderActionsActive();
+  }
+
+  function kbIsUpper(){
+    return kbCaps || kbShift;
+  }
+
+  function kbWriteBackToState(el){
+    // Push active element value into the correct state slot
+    if(kbTarget === "name"){
+      currentHasUnsavedChanges = true;
+      setCustomerNameValue(el.value, el);
+      return;
+    }
+
+    if(kbTarget === "notes"){
+      currentHasUnsavedChanges = true;
+      state.current.notes = el.value;
+      renderQrPreview();
+      return;
+    }
+
+    if(kbIsChecklistTarget()){
+      currentHasUnsavedChanges = true;
+      const jc = ensureJobChecklist();
+      const key = kbChecklistKey();
+      jc[key] = String(el.value || "");
+      // QR doesn’t include checklist fields right now, but no harm if you add later
+      renderQrPreview();
+      return;
+    }
+  }
+
+  function kbApplyChar(ch){
+    const el = kbGetActiveEl();
+    if(!el) return;
+
+    pushUndo();
+
+    if(kbTarget === "name"){
+      const nextRaw = (el.value || "") + ch;
+      const next = titleCaseNameLive(nextRaw);
+      el.value = next;
+      kbWriteBackToState(el);
+      save();
+      kbRenderDisplay();
+      return;
+    }
+
+    if(NOTES_FORCE_UPPERCASE && kbIsNotesTarget()){
+      ch = String(ch || "").toUpperCase();
+    }
+
+    el.value = (el.value || "") + ch;
+    if(NOTES_FORCE_UPPERCASE && kbIsNotesTarget()) el.value = String(el.value || "").toUpperCase();
+    kbWriteBackToState(el);
+    save();
+    kbRenderDisplay();
+
+    if(kbShift && !kbCaps) kbSetShift(false);
+  }
+
+  function kbBackspace(){
+    const el = kbGetActiveEl();
+    if(!el) return;
+
+    pushUndo();
+
+    if(kbTarget === "name"){
+      const s = el.value || "";
+      el.value = titleCaseNameLive(s.slice(0, -1));
+      kbWriteBackToState(el);
+      save();
+      kbRenderDisplay();
+      return;
+    }
+
+    const s = el.value || "";
+    el.value = s.slice(0, -1);
+    kbWriteBackToState(el);
+    save();
+    kbRenderDisplay();
+  }
+
+  function kbClear(){
+    const el = kbGetActiveEl();
+    if(!el) return;
+
+    pushUndo();
+
+    el.value = "";
+    kbWriteBackToState(el);
+    save();
+    kbRenderDisplay();
+  }
+
+  function kbSpace(){
+    const el = kbGetActiveEl();
+    if(!el) return;
+
+    pushUndo();
+
+    if(kbTarget === "name"){
+      const s = el.value || "";
+      if(s.length === 0) return;
+      if(s.endsWith(" ")) return;
+      el.value = s + " ";
+      kbWriteBackToState(el);
+      save();
+      kbRenderDisplay();
+      return;
+    }
+
+    el.value = (el.value || "") + " ";
+    kbWriteBackToState(el);
+    save();
+    kbRenderDisplay();
+  }
+
+  function kbRenderKeys(){
+    const upper = kbIsUpper();
+
+    const numberRow = ["1","2","3","4","5","6","7","8","9","0"];
+    const letterRows = [
+      ["Q","W","E","R","T","Y","U","I","O","P"],
+      ["A","S","D","F","G","H","J","K","L"],
+      ["Z","X","C","V","B","N","M"]
+    ];
+
+    kbKeysEl.innerHTML = "";
+
+    const meta = KB_TARGET_META[kbTarget] || KB_TARGET_META["notes"];
+    if(meta.numbers){
+      numberRow.forEach(ch => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "kb-key";
+        b.textContent = ch;
+        b.addEventListener("click", () => kbApplyChar(ch));
+        kbKeysEl.appendChild(b);
+      });
+    }
+
+    letterRows.forEach(row => {
+      row.forEach(ch => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "kb-key";
+        const shown = upper ? ch : ch.toLowerCase();
+        b.textContent = shown;
+        b.addEventListener("click", () => kbApplyChar(shown));
+        kbKeysEl.appendChild(b);
+      });
+    });
+  }
+
+  function kbRenderActionsActive(){
+    if(kbShiftEl) kbShiftEl.classList.toggle("is-active", kbShift);
+    if(kbCapsEl)  kbCapsEl.classList.toggle("is-active", kbCaps);
+  }
+
+  // ---------- Quick phrases ----------
+  function appendPhrase(phrase){
+    pushUndo();
+    const cur = (state.current.notes || "");
+    const needsSpace = cur.length && !/\s$/.test(cur);
+    const next = cur + (needsSpace ? " " : "") + phrase;
+    state.current.notes = next;
+    if(notesInputEl) notesInputEl.value = next;
+    save({ currentDirty: true });
+    renderQrPreview();
+    if(kbBackdropEl && kbBackdropEl.style.display === "flex"){
+      kbRenderDisplay();
+    }
+  }
+
+  // ---------- Bind ----------
+  // ---------- Version / Change Log ----------
+  // (Fix for: "Can't find variable: openVersionModal")
+  function renderChangeLog(){
+    // If you created these constants earlier, keep using them.
+    // If not, this still won’t crash — it’ll show placeholders.
+    const v = (typeof APP_VERSION !== "undefined") ? APP_VERSION : "v?";
+    const u = (typeof APP_LAST_UPDATED !== "undefined") ? APP_LAST_UPDATED : "—";
+
+    if(btnVersionEl) btnVersionEl.textContent = v;
+    if(versionMetaEl) versionMetaEl.textContent = `${v} • Last updated: ${u}`;
+
+    if(!versionLogBodyEl) return;
+
+    const log = (typeof CHANGELOG !== "undefined" && Array.isArray(CHANGELOG)) ? CHANGELOG : [];
+    if(!log.length){
+      versionLogBodyEl.innerHTML = `<div class="muted">No change log entries yet.</div>`;
+      return;
+    }
+
+    versionLogBodyEl.innerHTML = log.map(entry => {
+      const date = escapeHtml(entry.date || "—");
+      const feat = escapeHtml(entry.feature || "—");
+      const changes = Array.isArray(entry.changes) ? entry.changes : [];
+
+      return `
+        <div class="version-entry">
+          <div class="top">
+            <div class="date">${date}</div>
+            <div class="feat">${feat}</div>
+          </div>
+          ${changes.length
+            ? `<ul>${changes.map(c => `<li>${escapeHtml(String(c))}</li>`).join("")}</ul>`
+            : `<div class="muted" style="margin-top:8px;">—</div>`
+          }
+        </div>
+      `;
+    }).join("");
+  }
+
+  function openVersionModal(){
+    if(!versionModalBackdropEl) return;
+    renderChangeLog();
+
+    // Prevent background scroll
+    document.body.classList.add("modal-open");
+
+    versionModalBackdropEl.style.display = "flex";
+  }
+
+  function closeVersionModal(){
+    if(!versionModalBackdropEl) return;
+
+    versionModalBackdropEl.style.display = "none";
+
+    // Re-enable background scroll
+    document.body.classList.remove("modal-open");
+  }
+  function bindForm(){
+  // BIN size buttons inside keypad modal
+  if(btnBinSizeSmallEl){
+    btnBinSizeSmallEl.addEventListener("click", () => {
+      keypadState.binSize = "S";
+      btnBinSizeSmallEl.classList.add("is-active");
+      if(btnBinSizeLargeEl) btnBinSizeLargeEl.classList.remove("is-active");
+      setKeypadValue(keypadState.value); // re-check gating
+    });
+  }
+  if(btnBinSizeLargeEl){
+    btnBinSizeLargeEl.addEventListener("click", () => {
+      keypadState.binSize = "L";
+      btnBinSizeLargeEl.classList.add("is-active");
+      if(btnBinSizeSmallEl) btnBinSizeSmallEl.classList.remove("is-active");
+      setKeypadValue(keypadState.value); // re-check gating
+    });
+  }
+  // Native input inside keypad modal (iPhone/iPad)
+  if(qtyNativeInputEl){
+    qtyNativeInputEl.addEventListener("input", () => {
+      const raw = String(qtyNativeInputEl.value || "").replace(/\D/g, "");
+      setKeypadValue(raw === "" ? "0" : raw);
+    });
+    qtyNativeInputEl.addEventListener("keydown", (e) => {
+      if(e.key === "Enter"){
+        e.preventDefault();
+        if(btnAddQtyEl) btnAddQtyEl.click();
+      }
+    });
+  }
+  // Version badge + change log modal
+  if(btnVersionEl) btnVersionEl.addEventListener("click", openVersionModal);
+  if(btnVersionCloseEl) btnVersionCloseEl.addEventListener("click", closeVersionModal);
+  if(versionModalBackdropEl){
+    versionModalBackdropEl.addEventListener("click", (e) => {
+      if(e.target === versionModalBackdropEl) closeVersionModal();
+    });
+  }
+  if(btnMenuToggleEl && actionsPanelEl){
+    btnMenuToggleEl.addEventListener("click", () => {
+      const isOpen = actionsPanelEl.classList.contains("is-open");
+      setHeaderMenuOpen(!isOpen);
+    });
+    window.addEventListener("resize", () => {
+      if(!isMenuViewport()) setHeaderMenuOpen(true);
+      renderSaveCue();
+    });
+    if(isMenuViewport()) setHeaderMenuOpen(false);
+    else setHeaderMenuOpen(true);
+  }
+
+  [btnUndoEl, btnRedoEl, btnNewCustomerEl, btnSaveCustomerEl, btnCustomersEl, btnScanBinEl, btnExportEl, btnImportEl, btnPrintEl]
+    .filter(Boolean)
+    .forEach(el => el.addEventListener("click", () => closeHeaderMenuIfPhone()));
+// Photos
+if(btnAddPhotosEl && photosInputEl){
+  btnAddPhotosEl.addEventListener("click", () => photosInputEl.click());
+
+  photosInputEl.addEventListener("change", async () => {
+    const files = Array.from(photosInputEl.files || []);
+    if(!files.length) return;
+
+    pushUndo();
+    if(!state.current.jobChecklist) state.current.jobChecklist = {};
+    if(!Array.isArray(state.current.jobChecklist.photos)) state.current.jobChecklist.photos = [];
+
+    let added = 0;
+    for(const f of files){
+      try{
+        const dataUrl = await fileToCompressedDataUrl(f, 1400);
+        state.current.jobChecklist.photos.push({
+          id: uid(),
+          name: f.name || "Photo",
+          dataUrl,
+          addedAt: new Date().toISOString()
+        });
+        added++;
+      }catch(e){
+        toast("Could not add a photo");
+      }
+    }
+
+    photosInputEl.value = "";
+    try{
+      save({ currentDirty: true });
+      renderChecklistPhotos();
+      toast(added ? `Added ${added} photo${added===1?"":"s"}` : "No photos added");
+    }catch(e){
+      // localStorage may be full
+      state.current.jobChecklist.photos.splice(-added, added);
+      try{ save({ currentDirty: true }); }catch(_e){}
+      renderChecklistPhotos();
+      toast("Storage full. Try fewer/smaller photos.");
+    }
+  });
+}
+
+if(photosGridEl){
+  photosGridEl.addEventListener("click", (e) => {
+    const del = e.target.closest('[data-act="del"]');
+    if(del){
+      const id = del.getAttribute("data-id");
+      if(!id) return;
+      pushUndo();
+      state.current.jobChecklist.photos = (state.current.jobChecklist.photos || []).filter(p => p.id !== id);
+      save({ currentDirty: true });
+      renderChecklistPhotos();
+      toast("Photo removed");
+      return;
+    }
+
+    const thumb = e.target.closest(".photo-thumb");
+    if(thumb){
+      const id = thumb.getAttribute("data-id");
+      const p = (state.current.jobChecklist.photos || []).find(x => x.id === id);
+      if(p && p.dataUrl) openPhotoModal(p.dataUrl);
+    }
+  });
+}
+
+if(btnPhotoCloseEl) btnPhotoCloseEl.addEventListener("click", closePhotoModal);
+if(photoModalEl){
+  photoModalEl.addEventListener("click", (e) => {
+    if(e.target === photoModalEl) closePhotoModal();
+  });
+}
+    const onNameBlur = (el) => {
+      const fixed = titleCaseNameFinal(el.value);
+      if(fixed !== el.value){
+        pushUndo();
+        el.value = fixed;
+        setCustomerNameValue(fixed, el);
+        save({ currentDirty: true });
+        kbRenderDisplay();
+      }
+    };
+    const onNameInput = (el) => {
+      setCustomerNameValue(el.value, el);
+      save({ currentDirty: true });
+    };
+    const onCustomerFieldInput = (el, key, previewEl, jobEl) => {
+      const value = String(el.value || "");
+      state.current[key] = value;
+      if(previewEl && previewEl !== el && previewEl.value !== value) previewEl.value = value;
+      if(jobEl && jobEl !== el && jobEl.value !== value) jobEl.value = value;
+      save({ currentDirty: true });
+      renderRecords();
+    };
+
+    if(customerNameJobEl) customerNameJobEl.addEventListener("blur", () => onNameBlur(customerNameJobEl));
+    if(customerNameJobEl) customerNameJobEl.addEventListener("input", () => onNameInput(customerNameJobEl));
+    if(customerCompanyJobEl) customerCompanyJobEl.addEventListener("input", () => onCustomerFieldInput(customerCompanyJobEl, "company", customerCompanyEl, customerCompanyJobEl));
+    if(customerPhoneJobEl) customerPhoneJobEl.addEventListener("input", () => onCustomerFieldInput(customerPhoneJobEl, "phone", customerPhoneEl, customerPhoneJobEl));
+    if(customerAddressJobEl) customerAddressJobEl.addEventListener("input", () => onCustomerFieldInput(customerAddressJobEl, "address", customerAddressEl, customerAddressJobEl));
+    if(customerNameEl){
+      customerNameEl.addEventListener("click", openJobModal);
+      customerNameEl.addEventListener("focus", () => { openJobModal(); customerNameEl.blur(); });
+    }
+    if(customerCompanyEl){
+      customerCompanyEl.addEventListener("click", openJobModal);
+      customerCompanyEl.addEventListener("focus", () => { openJobModal(); customerCompanyEl.blur(); });
+    }
+    if(customerPhoneEl){
+      customerPhoneEl.addEventListener("click", openJobModal);
+      customerPhoneEl.addEventListener("focus", () => { openJobModal(); customerPhoneEl.blur(); });
+    }
+    if(customerAddressEl){
+      customerAddressEl.addEventListener("click", openJobModal);
+      customerAddressEl.addEventListener("focus", () => { openJobModal(); customerAddressEl.blur(); });
+    }
+    if(binsWrapEl){
+      binsWrapEl.addEventListener("click", openJobModal);
+    }
+
+    // Optional on-screen keyboard buttons (if present)
+    // (Name button removed; Notes button can stay if it exists)
+    if(btnNotesKBEl) btnNotesKBEl.addEventListener("click", () => kbShow("notes"));
+
+    // Auto-open on-screen keyboard when TOGGLE is ON
+    const AUTO_OPEN_SCREEN_KB = (!USE_NATIVE_INPUT) && (typeof uiScreenKeyboardEnabled === "function" ? uiScreenKeyboardEnabled() : false);
+
+    if(AUTO_OPEN_SCREEN_KB && customerNameJobEl){
+      customerNameJobEl.addEventListener("focus", () => { kbShow("name"); customerNameJobEl.blur(); });
+      customerNameJobEl.addEventListener("click", () => { kbShow("name"); customerNameJobEl.blur(); });
+    }
+
+    if(notesInputEl){
+      notesInputEl.addEventListener("input", () => {
+        let v = notesInputEl.value;
+        if(NOTES_FORCE_UPPERCASE) v = String(v || "").toUpperCase();
+        if(v !== notesInputEl.value) notesInputEl.value = v;
+
+        state.current.notes = v;
+        save({ currentDirty: true });
+        renderQrPreview();
+      });
+
+      if(AUTO_OPEN_SCREEN_KB){
+        notesInputEl.addEventListener("focus", () => {
+          kbShow("notes");
+          notesInputEl.blur(); // prevent native keyboard only when using on-screen keyboard
+        });
+        notesInputEl.addEventListener("click", () => {
+          kbShow("notes");
+          notesInputEl.blur();
+        });
+      }
+    }
+
+
+    attachKbToField(powerLocationEl, "jc:powerLocation");
+    attachKbToField(outletUsedEl, "jc:outletUsed");
+    attachKbToField(installNotesEl, "jc:installNotes");
+    attachKbToField(maintenanceNotesEl, "jc:maintenanceNotes");
+    attachKbToField(removalNotesEl, "jc:removalNotes");
+
+    if(phraseRepairEl) phraseRepairEl.addEventListener("click", () => appendPhrase("Need to repair"));
+    if(phraseTightenEl) phraseTightenEl.addEventListener("click", () => appendPhrase("Need to tighten bulbs"));
+    if(phraseColorChangeEl) phraseColorChangeEl.addEventListener("click", () => appendPhrase("Client asked about a color change"));
+
+    if(removalDateJobEl){
+      removalDateJobEl.addEventListener("change", () => {
+        pushUndo();
+        state.current.removalDate = removalDateJobEl.value;
+        if(removalDateEl) removalDateEl.value = state.current.removalDate || "";
+        save({ currentDirty: true }); updateStatus();
+      });
+    }
+
+    if(timerSettingJobEl){
+      timerSettingJobEl.addEventListener("change", () => {
+        pushUndo();
+        state.current.timerSetting = timerSettingJobEl.value;
+        if(timerSettingEl) timerSettingEl.value = state.current.timerSetting || "";
+        save({ currentDirty: true }); updateStatus();
+      });
+    }
+
+    if(btnAddBinJobEl && binInputJobEl){
+      btnAddBinJobEl.addEventListener("click", () => {
+        addBin(binInputJobEl.value);
+        binInputJobEl.value = "";
+        binInputJobEl.focus();
+      });
+    }
+    if(btnScanBinEl) btnScanBinEl.addEventListener("click", () => openBinScanner("open_customer"));
+    if(btnScanBinJobEl) btnScanBinJobEl.addEventListener("click", () => openBinScanner("add_bin"));
+    if(btnScanCloseEl) btnScanCloseEl.addEventListener("click", stopBinScanner);
+    if(scanModalBackdropEl){
+      scanModalBackdropEl.addEventListener("click", (e) => {
+        if(e.target === scanModalBackdropEl) stopBinScanner();
+      });
+    }
+    if(binInputJobEl){
+      binInputJobEl.addEventListener("click", () => {
+        openKeypad({ mode:"BIN" });
+        binInputJobEl.blur();
+      });
+
+      binInputJobEl.addEventListener("input", () => {
+        const norm = normalizeBin(binInputJobEl.value);
+        if(norm !== binInputJobEl.value) binInputJobEl.value = norm;
+      });
+
+      binInputJobEl.addEventListener("keydown", (e) => {
+        if(e.key === "Enter"){
+          e.preventDefault();
+          addBin(binInputJobEl.value);
+          binInputJobEl.value = "";
+        }
+      });
+    }
+    // Mini wire selector
+    if(btnMiniWireGreenEl){
+      btnMiniWireGreenEl.addEventListener("click", () => {
+        pushUndo();
+        state.miniWire = "Green";
+        save();
+        renderColors();
+      });
+    }
+    if(btnMiniWireWhiteEl){
+      btnMiniWireWhiteEl.addEventListener("click", () => {
+        pushUndo();
+        state.miniWire = "White";
+        save();
+        renderColors();
+      });
+    }
+
+    quickModeEl.addEventListener("change", () => {
+      pushUndo();
+      state.quickMode = !!quickModeEl.checked;
+      save();
+      renderColors();
+      updateUndoButton();
+    });
+
+    if(kbToggleEl){
+      kbToggleEl.addEventListener("change", () => {
+        pushUndo();
+        state.ui = state.ui || { screenKeyboard: true };
+        state.ui.screenKeyboard = !!kbToggleEl.checked;
+        save();
+        applyKeyboardPref();
+      });
+    }
+
+        btnUndoEl.addEventListener("click", undo);
+    if(btnScanQuickEl) btnScanQuickEl.addEventListener("click", () => openBinScanner("open_customer"));
+    if(btnRedoEl) btnRedoEl.addEventListener("click", redo);
+    btnNewCustomerEl.addEventListener("click", startNewCustomer);
+    btnSaveCustomerEl.addEventListener("click", saveCustomerRecord);
+    if(btnCustomersEl) btnCustomersEl.addEventListener("click", openCustomersModal);
+    if(btnCustomersCloseEl) btnCustomersCloseEl.addEventListener("click", closeCustomersModal);
+    if(customersSearchEl){
+      customersSearchEl.addEventListener("input", () => {
+        customersSearchTerm = customersSearchEl.value || "";
+        renderRecords();
+      });
+    }
+    if(customersSortEl){
+      customersSortEl.value = customersSortMode;
+      customersSortEl.addEventListener("change", () => {
+        customersSortMode = customersSortEl.value || "last_saved_desc";
+        renderRecords();
+      });
+    }
+    if(customersModalBackdropEl){
+      customersModalBackdropEl.addEventListener("click", (e) => {
+        if(e.target === customersModalBackdropEl) closeCustomersModal();
+      });
+    }
+    if(btnSaveCustomerQuickEl) btnSaveCustomerQuickEl.addEventListener("click", saveCustomerRecord);
+    btnExportEl.addEventListener("click", exportCSV);
+
+    // CSV Import
+    if(btnImportEl && csvImportInputEl){
+      btnImportEl.addEventListener("click", () => csvImportInputEl.click());
+      csvImportInputEl.addEventListener("change", () => {
+        importCSVFile(csvImportInputEl.files && csvImportInputEl.files[0]);
+        csvImportInputEl.value = "";
+      });
+    }    // Job Checklist modal open/close
+    if(btnJobNotesEl) btnJobNotesEl.addEventListener("click", openJobModal);
+    if(btnJobModalCloseEl) btnJobModalCloseEl.addEventListener("click", closeJobModal);
+    if(jobModalBackdropEl){
+      jobModalBackdropEl.addEventListener("click", (e) => {
+        if(e.target === jobModalBackdropEl) closeJobModal();
+      });
+    }
+
+    // Job Checklist field bindings
+function bindJobNotesInputs(){
+  const fields = [
+    { el: $("jcInstallNotes"), key: "installNotes" },
+    { el: $("jcMaintenanceNotes"), key: "maintenanceNotes" },
+    { el: $("jcRemovalNotes"), key: "removalNotes" }
+  ];
+
+  fields.forEach(f => {
+    if(!f.el) return;
+
+    // Native typing
+    f.el.oninput = () => {
+      let v = f.el.value || "";
+      if(NOTES_FORCE_UPPERCASE) v = v.toUpperCase();
+      f.el.value = v;
+
+      state.current.jobChecklist[f.key] = v;
+      save({ currentDirty: true });
+    };
+
+    // Auto-open on-screen keyboard when enabled
+    f.el.onclick = () => {
+      if(uiScreenKeyboardEnabled()){
+        kbShow(`jc:${f.key}`);
+        f.el.blur(); // prevent native keyboard when using on-screen
+      }
+    };
+  });
+}
+    function bindJc(el, key){
+      if(!el) return;
+      const ev = (el.tagName === "SELECT" || el.tagName === "TEXTAREA" || el.tagName === "INPUT") ? "change" : "click";
+      el.addEventListener(ev, () => {
+        pushUndo();
+        const jc = ensureJobChecklist();
+        jc[key] = (el.type === "checkbox") ? !!el.checked : String(el.value || "");
+        save({ currentDirty: true });
+        renderQrPreview();
+      });
+      // Also capture typing in textareas/inputs smoothly
+      if(el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && el.type !== "checkbox")){
+        el.addEventListener("input", () => {
+          const jc = ensureJobChecklist();
+          jc[key] = String(el.value || "");
+          save({ currentDirty: true });
+        });
+      }
+    }
+
+    bindJc(chkLiftEl, "liftRequired");
+    bindJc(chkGoatEl, "goatAssist");
+    bindJc(chkGuttersEl, "gutterGuards");
+    bindJc(roofTypeEl, "roofType");
+    bindJc(powerLocationEl, "powerLocation");
+    bindJc(outletUsedEl, "outletUsed");
+    bindJc(installNotesEl, "installNotes");
+    bindJc(maintenanceNotesEl, "maintenanceNotes");
+    bindJc(removalNotesEl, "removalNotes");
+    btnClearCountsEl.addEventListener("click", clearCurrentCounts);
+
+    // Tap any count bubble to edit (SET mode)
+    countsPreviewEl.addEventListener("click", (e) => {
+      const b = e.target.closest(".bubble");
+      if(!b) return;
+
+      const itemId = b.getAttribute("data-item-id");
+      const variant = b.getAttribute("data-variant") || "";
+      const item = ITEMS.find(x => x.id === itemId);
+      if(!item) return;
+
+      openKeypad({ mode:"SET", item, variant, unit: item.unit });
+    });
+
+    btnCancelEl.addEventListener("click", closeKeypad);
+    modalBackdropEl.addEventListener("click", (e) => {
+      if(e.target === modalBackdropEl) closeKeypad();
+    });
+
+    btnAddQtyEl.addEventListener("click", () => {
+      if(keypadState.mode === "BIN"){
+        const size = String(keypadState.binSize || "");
+        if(size !== "S" && size !== "L"){
+          toast("Select Small or Large");
+          return;
+        }
+
+const rawVal = USE_NATIVE_INPUT && qtyNativeInputEl ? String(qtyNativeInputEl.value || "") : String(keypadState.value || "");
+const val = rawVal.replace(/\D/g, "");
+if(!val.length){
+  toast("Enter a BIN number");
+  return;
+}
+
+// Auto-pad to 3 digits: 1 → 001, 12 → 012
+const bin = val.padStart(3, "0").slice(-3);
+addBin(bin, size);
+closeKeypad();
+return;
+      }
+
+      if(keypadState.mode === "SET"){
+        const rawQty = USE_NATIVE_INPUT && qtyNativeInputEl ? String(qtyNativeInputEl.value || "") : String(keypadState.value || "0");
+        const qty = Number(rawQty.replace(/\D/g,"") || 0);
+        setCount(keypadState.item.id, keypadState.variant, qty);
+        toast(`${keypadState.item.name} • ${keypadState.variant.replace(/<br>/g," ")}: set to ${qty}`);
+        closeKeypad();
+        return;
+      }
+
+      // ADD mode
+      const rawQty = USE_NATIVE_INPUT && qtyNativeInputEl ? String(qtyNativeInputEl.value || "") : String(keypadState.value || "0");
+      const qty = Number(rawQty.replace(/\D/g,"") || 0);
+      if(!qty){ toast("Enter a qty"); return; }
+      addCount(keypadState.item.id, keypadState.variant, qty);
+      toast(`${keypadState.item.name}${keypadState.variant?(" • "+keypadState.variant.replace(/<br>/g," " )):""}: +${qty}`);
+      closeKeypad();
+    });
+
+    kbBackdropEl.addEventListener("click", (e) => {
+      if(e.target === kbBackdropEl) kbHide();
+    });
+
+    kbDoneEl.addEventListener("click", () => {
+      if(kbTarget === "name"){
+        const activeNameEl = kbGetActiveEl() || customerNameEl;
+        const fixed = titleCaseNameFinal(activeNameEl.value);
+        if(fixed !== activeNameEl.value){
+          pushUndo();
+          activeNameEl.value = fixed;
+          setCustomerNameValue(fixed, activeNameEl);
+          save({ currentDirty: true });
+        }
+      }else{
+        state.current.notes = notesInputEl ? notesInputEl.value : (state.current.notes || "");
+        save({ currentDirty: true });
+        renderQrPreview();
+      }
+
+      kbHide();
+      customerNameEl.blur();
+      if(customerNameJobEl) customerNameJobEl.blur();
+      if(notesInputEl) notesInputEl.blur();
+    });
+
+    if(kbShiftEl) kbShiftEl.addEventListener("click", () => kbSetShift(!kbShift));
+    if(kbCapsEl)  kbCapsEl.addEventListener("click", () => kbToggleCaps());
+    if(kbDotEl)   kbDotEl.addEventListener("click", () => kbApplyChar("."));
+    if(kbDashEl)  kbDashEl.addEventListener("click", () => kbApplyChar("-"));
+
+    kbSpaceEl.addEventListener("click", () => kbSpace());
+    kbClearEl.addEventListener("click", () => kbClear());
+    kbBackEl.addEventListener("click", () => kbBackspace());
+
+    // prevent iOS double-tap zoom
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function (event) {
+      const now = (new Date()).getTime();
+      if (now - lastTouchEnd <= 300) event.preventDefault();
+      lastTouchEnd = now;
+    }, false);
+  }
+
+  // ---------- QR + Print ----------
+  function buildItemsInventoriedLines(){
+    const lines = [];
+
+    ITEMS.forEach(item => {
+      const obj = state.current.counts?.[item.id] || {};
+      const entries = Object.entries(obj).filter(([,v]) => Number(v || 0) !== 0);
+      if(!entries.length) return;
+
+      if(item.needsColor){
+        entries.sort((a,b) => String(a[0]).localeCompare(String(b[0])));
+        const parts = entries.map(([variant, qty]) => {
+          const clean = String(variant).replace(/<br\s*\/?>/gi, " ");
+          return `${clean}: ${Number(qty)}`;
+        });
+        lines.push({ title: item.name, detail: parts.join(" • ") });
+      }else{
+        const qty = Number(obj[""] || 0);
+        lines.push({ title: item.name, detail: `${qty}` });
+      }
+    });
+
+    return lines;
+  }
+
+  function buildItemsInventoriedTextForQr(){
+    const lines = buildItemsInventoriedLines();
+    if(!lines.length) return "— No items inventoried.";
+    return lines.map(x => `${x.title}: ${x.detail}`).join("\n");
+  }
+
+  function buildQrPayload(){
+    const name = (state.current.customerName || "").trim() || "—";
+    const bins = state.current.bins.length ? binsToString(state.current.bins) : "—";
+    const itemsText = buildItemsInventoriedTextForQr();
+    const notes = (state.current.notes || "").trim();
+    const pr = getCustomerPriceRange();
+    const priceLine = `Est Price (C9+Minis+Garland): ${fmtMoney(pr.min)}–${fmtMoney(pr.max)}`;
+
+    return [
+      "Xtreme Lighting",
+      `Client: ${name}`,
+      `BINs: ${bins}`,
+      priceLine,
+      "",
+      "Items:",
+      itemsText,
+      notes ? "" : null,
+      notes ? "Notes:" : null,
+      notes || null
+    ].filter(Boolean).join("\n");
+  }
+
+  function appBaseUrl(){
+    try{
+      return window.location.href.split("#")[0].split("?")[0];
+    }catch(e){
+      return "index.html";
+    }
+  }
+
+  function buildCustomerOpenUrl(binEntry, season){
+    const binText = `${binEntry.size}-${binEntry.code}`;
+    const base = appBaseUrl();
+    const qs = `bin=${encodeURIComponent(binText)}&season=${encodeURIComponent(String(season || seasonYear))}`;
+    return `${base}?${qs}`;
+  }
+
+  function qrUrlFromText(text, size = 180){
+    const encoded = encodeURIComponent(text);
+    return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encoded}`;
+  }
+
+  function renderQrPreview(){
+    if(!qrPreviewImgEl || !qrPreviewTextEl) return;
+    const payload = buildQrPayload();
+    qrPreviewTextEl.textContent = payload;
+    qrPreviewImgEl.src = qrUrlFromText(payload, 220);
+  }
+
+  function renderOpenCustomerQr(){
+    if(!openQrWrapEl || !openQrImgEl || !openQrTextEl) return;
+
+    const bins = (state.current.bins || []).map(normalizeBinEntry).filter(Boolean);
+    const first = bins[0];
+
+    if(!first){
+      openQrWrapEl.style.display = "none";
+      return;
+    }
+
+    const url = buildCustomerOpenUrl(first, state.current.season || seasonYear);
+    openQrWrapEl.style.display = "flex";
+    openQrImgEl.src = qrUrlFromText(url, 220);
+    openQrTextEl.textContent =
+      `Open-customer QR (by BIN)\nBIN: ${first.size}-${first.code}\nScan on phone to open this customer.`;
+  }
+
+  function parseBinFromUrl(raw){
+    const s = String(raw || "").trim().toUpperCase();
+    if(!s) return null;
+
+    const digits = s.replace(/\D/g, "");
+    const sizeMatch = s.match(/\b([SL])\b/);
+    const size = sizeMatch ? sizeMatch[1] : null;
+    const code = formatBin3(digits);
+    if(!code) return null;
+    return { size, code };
+  }
+
+  function parseScanResultToBin(text){
+    const raw = String(text || "").trim();
+    if(!raw) return null;
+
+    try{
+      const u = new URL(raw);
+      const b = parseBinFromUrl(u.searchParams.get("bin"));
+      const season = Number(u.searchParams.get("season") || 0);
+      if(b) return { bin: b, season };
+    }catch(e){}
+
+    const direct = parseBinFromUrl(raw);
+    if(direct) return { bin: direct, season: 0 };
+    return null;
+  }
+
+  function findRecordIndexByBin(target, seasonFilter){
+    if(!target || !target.code) return -1;
+    const wantedSeason = Number(seasonFilter || 0);
+
+    return state.records.findIndex(rec => {
+      if(wantedSeason && Number(rec.season || 0) !== wantedSeason) return false;
+      const bins = (rec.bins || []).map(normalizeBinEntry).filter(Boolean);
+      return bins.some(b => {
+        if(target.size && b.size !== target.size) return false;
+        return b.code === target.code;
+      });
+    });
+  }
+
+  function loadCustomerByBinParsed(parsed){
+    if(!parsed || !parsed.bin) return false;
+    const seasonParam = Number(parsed.season || 0);
+    let idx = findRecordIndexByBin(parsed.bin, seasonParam);
+    if(idx < 0 && seasonParam) idx = findRecordIndexByBin(parsed.bin, 0);
+    if(idx < 0) return false;
+
+    const rec = state.records[idx];
+    if(String(state.current.customerName || "").trim() === String(rec.customerName || "").trim()){
+      return true;
+    }
+
+    loadRecordToCurrent(idx);
+    return true;
+  }
+
+  function tryLoadCustomerFromUrlBin(){
+    const params = new URLSearchParams(window.location.search || "");
+    const rawBin = params.get("bin");
+    if(!rawBin) return;
+
+    const parsed = { bin: parseBinFromUrl(rawBin), season: Number(params.get("season") || 0) };
+    if(!parsed.bin){
+      toast("Could not read BIN in URL");
+      return;
+    }
+    if(loadCustomerByBinParsed(parsed)){
+      toast(`Opened customer from BIN ${parsed.bin.size ? parsed.bin.size + "-" : ""}${parsed.bin.code}`);
+      return;
+    }
+    toast(`No customer found for BIN ${parsed.bin.size ? parsed.bin.size + "-" : ""}${parsed.bin.code}`);
+  }
+
+  let scanStream = null;
+  let scanRaf = 0;
+  let scanCanvas = null;
+  let scanCtx = null;
+  let scanDetector = null;
+  let jsQrReady = false;
+  let scanMode = "open_customer";
+
+  function loadScriptOnce(src){
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[data-src="${src}"]`);
+      if(existing){
+        if(existing.getAttribute("data-loaded") === "1") return resolve();
+        existing.addEventListener("load", () => resolve(), { once: true });
+        existing.addEventListener("error", () => reject(new Error("Script load failed")), { once: true });
+        return;
+      }
+      const s = document.createElement("script");
+      s.src = src;
+      s.async = true;
+      s.defer = true;
+      s.setAttribute("data-src", src);
+      s.addEventListener("load", () => {
+        s.setAttribute("data-loaded", "1");
+        resolve();
+      }, { once: true });
+      s.addEventListener("error", () => reject(new Error("Script load failed")), { once: true });
+      document.head.appendChild(s);
+    });
+  }
+
+  async function ensureQrDecoderReady(){
+    if(scanDetector || jsQrReady) return true;
+    if("BarcodeDetector" in window){
+      scanDetector = new window.BarcodeDetector({ formats: ["qr_code"] });
+      return true;
+    }
+
+    // iPad Safari fallback
+    try{
+      await loadScriptOnce("https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js");
+      jsQrReady = typeof window.jsQR === "function";
+      return jsQrReady;
+    }catch(err){
+      return false;
+    }
+  }
+
+  async function startRearCamera(){
+    const tries = [
+      { video: { facingMode: { exact: "environment" } }, audio: false },
+      { video: { facingMode: { ideal: "environment" } }, audio: false },
+      { video: true, audio: false }
+    ];
+    let lastErr = null;
+    for(const c of tries){
+      try{
+        const stream = await navigator.mediaDevices.getUserMedia(c);
+        return stream;
+      }catch(err){
+        lastErr = err;
+      }
+    }
+    throw (lastErr || new Error("Could not open camera"));
+  }
+
+  function stopBinScanner(){
+    if(scanRaf){
+      cancelAnimationFrame(scanRaf);
+      scanRaf = 0;
+    }
+    if(scanVideoEl){
+      scanVideoEl.pause();
+      scanVideoEl.srcObject = null;
+    }
+    if(scanStream){
+      scanStream.getTracks().forEach(t => t.stop());
+      scanStream = null;
+    }
+    if(scanModalBackdropEl) scanModalBackdropEl.style.display = "none";
+    document.body.classList.remove("modal-open");
+    scanMode = "open_customer";
+  }
+
+  function isCurrentCustomerMatch(rec){
+    const recName = String(rec?.customerName || "").trim().toLowerCase();
+    const curName = String(state.current?.customerName || "").trim().toLowerCase();
+    const recSeason = Number(rec?.season || 0);
+    const curSeason = Number(state.current?.season || 0);
+    return !!recName && recName === curName && recSeason === curSeason;
+  }
+
+  function findBinOwnerRecord(bin){
+    if(!bin || !bin.code) return null;
+    for(const rec of (state.records || [])){
+      if(isCurrentCustomerMatch(rec)) continue;
+      const bins = (rec.bins || []).map(normalizeBinEntry).filter(Boolean);
+      const hit = bins.some(b => b.code === bin.code);
+      if(hit) return rec;
+    }
+    return null;
+  }
+
+  function applyScannedBinToCurrent(parsed){
+    const entry = normalizeBinEntry(parsed && parsed.bin ? parsed.bin : null);
+    if(!entry){
+      toast("Could not read BIN from QR");
+      return;
+    }
+    const owner = findBinOwnerRecord(entry);
+    if(owner){
+      toast(`BIN ${entry.size}-${entry.code} is already being used for ${owner.customerName || "another customer"}`, 3200);
+      return;
+    }
+    addBin(entry.code, entry.size);
+  }
+
+  async function scanLoop(){
+    if(!scanVideoEl || !scanCtx || !scanCanvas || (!scanDetector && !jsQrReady)){
+      if(scanHintEl) scanHintEl.textContent = "Scanner not ready on this device.";
+      return;
+    }
+
+    const w = scanVideoEl.videoWidth || 0;
+    const h = scanVideoEl.videoHeight || 0;
+    if(w > 0 && h > 0){
+      if(scanCanvas.width !== w || scanCanvas.height !== h){
+        scanCanvas.width = w;
+        scanCanvas.height = h;
+      }
+      scanCtx.drawImage(scanVideoEl, 0, 0, w, h);
+      try{
+        let rawValue = "";
+        if(scanDetector){
+          const results = await scanDetector.detect(scanCanvas);
+          const first = Array.isArray(results) ? results[0] : null;
+          rawValue = first && first.rawValue ? String(first.rawValue) : "";
+        }else if(jsQrReady && scanCtx){
+          const img = scanCtx.getImageData(0, 0, w, h);
+          const found = window.jsQR(img.data, w, h, { inversionAttempts: "attemptBoth" });
+          rawValue = found && found.data ? String(found.data) : "";
+        }
+
+        if(rawValue){
+          const parsed = parseScanResultToBin(rawValue);
+          if(!parsed || !parsed.bin){
+            if(scanHintEl) scanHintEl.textContent = "QR scanned, but no BIN found in it.";
+            scanRaf = requestAnimationFrame(scanLoop);
+            return;
+          }
+          if(scanMode === "add_bin"){
+            stopBinScanner();
+            applyScannedBinToCurrent(parsed);
+            return;
+          }
+          if(loadCustomerByBinParsed(parsed)){
+            stopBinScanner();
+            toast(`Opened customer from BIN ${parsed.bin.size ? parsed.bin.size + "-" : ""}${parsed.bin.code}`);
+            return;
+          }
+          if(scanHintEl) scanHintEl.textContent = `No customer found for BIN ${parsed.bin.size ? parsed.bin.size + "-" : ""}${parsed.bin.code}`;
+        }
+      }catch(err){}
+    }
+    scanRaf = requestAnimationFrame(scanLoop);
+  }
+
+  async function openBinScanner(mode = "open_customer"){
+    if(!scanModalBackdropEl || !scanVideoEl || !scanHintEl) return;
+    scanMode = (mode === "add_bin") ? "add_bin" : "open_customer";
+
+    if(!("mediaDevices" in navigator) || !navigator.mediaDevices.getUserMedia){
+      toast("Camera not supported on this device");
+      return;
+    }
+
+    const decoderOk = await ensureQrDecoderReady();
+    if(!decoderOk){
+      toast("QR scanner unavailable on this browser");
+      return;
+    }
+
+    try{
+      if(!scanCanvas){
+        scanCanvas = document.createElement("canvas");
+        scanCtx = scanCanvas.getContext("2d", { willReadFrequently: true });
+      }
+
+      scanHintEl.textContent = "Starting camera…";
+      scanModalBackdropEl.style.display = "flex";
+      document.body.classList.add("modal-open");
+
+      scanStream = await startRearCamera();
+      scanVideoEl.srcObject = scanStream;
+      await scanVideoEl.play();
+
+      scanHintEl.textContent = (scanMode === "add_bin")
+        ? "Scanning… hold steady on the BIN QR to add it."
+        : "Scanning… hold steady on the BIN QR.";
+      scanRaf = requestAnimationFrame(scanLoop);
+    }catch(err){
+      stopBinScanner();
+      toast("Could not open camera");
+    }
+  }
+
+  // --- DOM for printing ---
+  const btnPrintEl = $("btnPrint");
+  const printCardEl = document.getElementById("printCard");
+
+  function renderPrintCard(){
+    const name = (state.current.customerName || "").trim() || "—";
+    const bins = state.current.bins?.length ? binsToString(state.current.bins) : "—";
+    const items = buildItemsInventoriedLines();
+    const pr = getCustomerPriceRange();
+
+    const qrPayload = buildQrPayload();
+    const qrSrc = qrUrlFromText(qrPayload, 220);
+
+    const itemsHtml = items.length
+      ? `<ul>${items.map(x => `
+          <li>
+            <b>${escapeHtml(x.title)}:</b>
+            ${escapeHtml(x.detail)}
+          </li>
+        `).join("")}</ul>`
+      : `<div class="pc-line">— No items inventoried.</div>`;
+
+    printCardEl.innerHTML = `
+      <div class="pc-title">Xtreme Lighting – Inventory</div>
+
+      <div class="pc-line"><b>Client:</b> ${escapeHtml(name)}</div>
+      <div class="pc-line"><b>BINs:</b> ${escapeHtml(bins)}</div>
+      <div class="pc-line"><b>Est Price (C9+Minis+Garland):</b> ${escapeHtml(fmtMoney(pr.min))}–${escapeHtml(fmtMoney(pr.max))}</div>
+      ${state.current.notes?.trim()
+        ? `<div class="pc-line"><b>Notes:</b> ${escapeHtml(state.current.notes)}</div>`
+        : ""
+      }
+
+      <div class="pc-section">
+        <div class="pc-line"><b>Items inventoried:</b></div>
+        ${itemsHtml}
+      </div>
+
+      <div style="margin-top: 8pt; display:flex; justify-content:center;">
+        <img
+          src="${qrSrc}"
+          alt="Inventory QR Code"
+          style="width: 1.35in; height: 1.35in;"
+        />
+      </div>
+
+      <div class="pc-line" style="font-size:9pt; text-align:center; margin-top:4pt;">
+        Scan to view inventory
+      </div>
+    `;
+  }
+
+  function print3x5(){
+    renderPrintCard();
+    window.print();
+  }
+
+  if(btnPrintEl){
+    btnPrintEl.addEventListener("click", () => print3x5());
+  }
+
+  // ---------- Render ----------
+    // ---------- Render ----------
+  function renderAll(){
+    // Sync top toggles
+    if(quickModeEl) quickModeEl.checked = !!state.quickMode;
+
+    // On-screen keyboard toggle (desktop)
+    if(kbToggleEl){
+      kbToggleEl.checked = !!(state.ui && state.ui.screenKeyboard);
+      if(kbToggleStatusEl) kbToggleStatusEl.textContent = kbToggleEl.checked ? "ON" : "OFF";
+    }
+
+    if(remoteSyncStatusEl && !remoteEnabled()) setRemoteStatus("OFF");
+
+    applyKeyboardPref();
+    renderSaveCue();
+
+    renderBins();
+    updateStatus();
+    renderItems();
+    renderColors();
+    renderCountsPreview();
+    renderRecords();
+    renderQrPreview();
+    renderOpenCustomerQr();
+    renderPriceBox();
+    renderSeasonStats();
+    updateUndoButton();
+  }
+
+  // ---------- Init ----------
+  async function init(){
+    load();
+
+    // iOS uses native input
+    if(USE_NATIVE_INPUT) document.body.classList.add("native-input");
+
+    // Build keypad (only used if not iOS native mode)
+    if(keypadEl) buildKeypad();
+
+    // Bind all listeners
+    bindForm();
+
+    // Sync UI from state once
+    syncFormFromState();
+
+    // Apply keyboard pref (hide/show)
+    applyKeyboardPref();
+
+    // Initial render
+    renderAll();
+    tryLoadCustomerFromUrlBin();
+    await initAutoSync();
+    tryLoadCustomerFromUrlBin();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
