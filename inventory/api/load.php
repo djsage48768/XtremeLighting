@@ -1,14 +1,17 @@
 <?php
 header("Content-Type: application/json");
+require_once __DIR__ . "/_auth.php";
 
 $expectedApiKey = getenv("INVENTORY_API_KEY") ?: "";
+$authorized = false;
 if ($expectedApiKey !== "") {
   $receivedApiKey = $_SERVER["HTTP_X_API_KEY"] ?? "";
-  if (!hash_equals($expectedApiKey, $receivedApiKey)) {
-    http_response_code(401);
-    echo json_encode(["error" => "Unauthorized"]);
-    exit;
+  if ($receivedApiKey !== "" && hash_equals($expectedApiKey, $receivedApiKey)) {
+    $authorized = true;
   }
+}
+if(!$authorized){
+  require_auth_user("viewer");
 }
 
 $file = __DIR__ . "/../data/inventory.json";

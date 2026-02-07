@@ -7,7 +7,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Xtreme Lighting – Customer Inventory (Touch)</title>
-  <!-- VERSION: CustomerInventory (Touch).html | v1.0.1 | Last Updated: 2026-02-02 -->
+  <!-- VERSION: CustomerInventory (Touch).html | v1.2.0 | Last Updated: 2026-02-07 -->
+
+  <script src="assets/vendor/fabric.min.js"></script>
 
   <!-- =========================
        CSS (ORIGINAL LOOK)
@@ -49,36 +51,71 @@ body.modal-open .modal-backdrop{
 
 *{ box-sizing:border-box; }
 
-/* Hidden print container */
-#printCard{ display:none; }
+/* Hidden print container (renderable for Safari print) */
+#printCard{
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 4in;
+  height: 6in;
+  opacity: 0;
+  pointer-events: none;
+}
 
-/* Print rules for 3x5 index card */
+/* Print rules for 4x6 index card */
 @media print {
-  @page { size: 5in 3in; margin: 0.25in; }
+  @page { size: 4in 6in; margin: 0; }
 
   html, body {
-    width: 3in;
-    height: 5in;
+    width: 4in;
+    height: 6in;
     margin: 0;
     padding: 0;
     overflow: hidden;
   }
 
+  body * { visibility: hidden !important; }
+  #printCard, #printCard * { visibility: visible !important; }
   header, main, .toast, .modal-backdrop, .kb-backdrop { display: none !important; }
 
   #printCard {
     display: block !important;
-    width: 100%;
-    height: 100%;
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 4in;
+    height: 6in;
+    box-sizing: border-box;
     font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
     color: #000;
+    opacity: 1 !important;
+    pointer-events: none !important;
   }
 
-  #printCard .pc-title { font-weight: 900; font-size: 14pt; margin-bottom: 6pt; }
-  #printCard .pc-line { font-size: 11pt; margin-bottom: 4pt; }
-  #printCard .pc-section { margin-top: 6pt; }
-  #printCard ul { margin: 4pt 0 0 14pt; padding: 0; font-size: 10.5pt; }
-  #printCard li { margin-bottom: 3pt; }
+  body.print-rotate #printCard{
+    left: 0 !important;
+    top: 0 !important;
+    transform: none;
+  }
+
+  #printCard .pc-logo { display:flex; justify-content:center; margin-top: 4pt; margin-bottom: 10pt; }
+  #printCard .pc-bin-label { font-size: 14pt; font-weight: 700; text-align:center; }
+  #printCard .pc-bin-value { font-size: 28pt; font-weight: 900; text-align:center; margin-top: 2pt; letter-spacing: 0.5pt; }
+  #printCard .pc-qr-label { font-size: 11pt; text-align:center; margin-top: 10pt; }
+  #printCard .pc-qr { display:flex; justify-content:center; margin-top: 4pt; }
+  #printCard .pc-rotator{
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 6in;
+    height: 4in;
+    transform-origin: center;
+  }
+  body.print-rotate #printCard .pc-rotator{
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+  #printCard .pc-wrap { width: 100%; height: 100%; padding: 0.2in; box-sizing: border-box; }
+  body{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 
 body{
@@ -174,10 +211,272 @@ header{
   justify-content:flex-end;
   gap:8px;
 }
+.season-select{
+  display:flex;
+  align-items:flex-end;
+  gap:10px;
+  margin-top:8px;
+}
+.season-select .field{
+  min-width: 160px;
+  max-width: 220px;
+}
+.season-mismatch{
+  margin-top:6px;
+  font-size:12px;
+  color:#b45309;
+}
 .action-buttons{
   display:grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap:8px;
+}
+
+/* -------- Page Tabs -------- */
+.page-tabs{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:flex-end;
+}
+.tab-btn{
+  border:1px solid var(--line);
+  background: var(--btn);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 8px 14px;
+  min-height: 40px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: .2px;
+  box-shadow: var(--shadow);
+}
+.tab-btn.is-active{
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: var(--shadow-strong);
+}
+
+.page-hidden{ display:none !important; }
+
+/* -------- Quote Mockup -------- */
+.quote-grid{
+  display:grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap:16px;
+}
+.quote-card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: var(--shadow);
+}
+.quote-summary{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap:8px;
+  margin-top:10px;
+}
+.quote-summary .stat{
+  border:1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  background: var(--panel2);
+}
+.quote-summary .stat .label{ font-size:12px; color:var(--muted); }
+.quote-summary .stat .value{ font-size:18px; font-weight:900; }
+.mockup-wrap{
+  border:1px solid var(--line);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+  padding: 12px;
+  box-shadow: var(--shadow);
+}
+.mockup-title{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:8px;
+}
+.mockup-title h3{ margin:0; font-size:16px; }
+.mockup-legend{
+  font-size:12px;
+  color:var(--muted);
+}
+.mockup-stage{
+  position: relative;
+  width: 100%;
+  min-height: 280px;
+  background: #fff;
+  border:1px dashed #cbd5e1;
+  border-radius: 12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+.mockup-stage img{
+  max-width: 100%;
+  height: auto;
+  display:block;
+}
+.mockup-canvas{
+  position:absolute;
+  left:0;
+  top:0;
+  width:100%;
+  height:100%;
+}
+.mockup-tools{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:10px;
+}
+.mockup-tools .btn-ghost.is-active{
+  background: var(--accent);
+  color:#fff;
+  border-color: transparent;
+}
+.quote-lines{
+  border:1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  background: #fff;
+  margin-top:10px;
+  font-size: 13px;
+}
+.quote-lines .rowline{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  border-bottom:1px dashed #e5e7eb;
+  padding:6px 0;
+}
+.quote-lines .rowline:last-child{ border-bottom:none; }
+.pricing-table{
+  border:1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  background:#fff;
+}
+.pricing-table .pt-title{
+  font-weight: 900;
+  margin-bottom:8px;
+}
+.pricing-table .pt-row{
+  display:grid;
+  gap:8px;
+  align-items:center;
+}
+.pricing-table .pt-cols-2{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+.pricing-table .pt-cols-4{ grid-template-columns: repeat(4, minmax(0,1fr)); }
+.pricing-table .pt-cols-5{ grid-template-columns: repeat(5, minmax(0,1fr)); }
+.pricing-table .pt-row.pt-head{
+  font-size:12px;
+  color: var(--muted);
+  font-weight:700;
+}
+.pricing-table .pt-row input{
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border:1px solid var(--line);
+  font-size: 13px;
+}
+.pricing-table .pt-asset{
+  font-weight: 800;
+}
+.pricing-table .pt-mini{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:6px;
+}
+
+/* Full-screen quote layout (desktop-first) */
+#pageQuote.container{
+  max-width: none;
+  grid-template-columns: 1fr;
+}
+#pageQuote .quote-grid{
+  grid-template-columns: 1.7fr 1fr;
+}
+#pageQuote .mockup-stage{
+  min-height: 65vh;
+}
+
+/* -------- Inventory Page -------- */
+.inventory-toolbar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:flex-end;
+  justify-content:space-between;
+}
+.inventory-summary{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.inv-table{
+  border:1px solid var(--line);
+  border-radius: 16px;
+  overflow:hidden;
+  background:#fff;
+  box-shadow: var(--shadow);
+}
+.inv-table-scroll{
+  overflow-x: auto;
+  border-radius: 16px;
+}
+.inv-row{
+  display:grid;
+  grid-template-columns: 130px 70px 120px 140px 140px 90px 110px 110px 90px 100px 160px 120px 140px;
+  gap:10px;
+  padding: 10px 12px;
+  align-items:center;
+  border-bottom:1px solid var(--line);
+  font-size: 13px;
+}
+.inv-row:last-child{ border-bottom:none; }
+.inv-row.inv-head{
+  background: var(--panel2);
+  font-weight: 900;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.inv-cell{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.inv-row.low-stock{
+  background: #fff7ed;
+}
+.inv-row.is-selected{
+  outline: 2px solid var(--accent);
+  background: #eef2ff;
+}
+.inv-actions{
+  display:flex;
+  gap:6px;
+  justify-content:flex-end;
+}
+.inv-actions button{
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+.inv-empty{
+  padding: 18px;
+  color: var(--muted);
+  font-size: 14px;
 }
 
 /* -------- Chip -------- */
@@ -778,6 +1077,106 @@ textarea{
   padding: 14px;
 }
 
+/* -------- User Access / Auth -------- */
+.user-bar{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  padding: 2px 0 4px;
+}
+.user-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-weight: 800;
+  font-size: 13px;
+}
+.user-name{
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.role-badge{
+  background: var(--accent-soft);
+  color: #1e3a8a;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.view-only-banner{
+  display:none;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-weight: 900;
+  margin: 12px 0 8px;
+  box-shadow: var(--shadow);
+}
+body.role-viewer .view-only-banner{ display:block; }
+body.role-viewer main{ pointer-events: none; }
+body.role-viewer header{ pointer-events: auto; }
+
+.auth-modal{
+  width: min(520px, 100%);
+}
+.access-modal{
+  width: min(880px, 100%);
+  max-height: min(78vh, 860px);
+  overflow: hidden;
+  display:flex;
+  flex-direction: column;
+}
+.access-modal-body{
+  overflow: auto;
+  padding-bottom: 6px;
+}
+.access-create{
+  display:flex;
+  gap:10px;
+  flex-wrap: wrap;
+  align-items:flex-end;
+}
+.access-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.access-row{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px;
+  flex-wrap: wrap;
+}
+.access-row .meta{
+  color: var(--muted);
+  font-size: 12px;
+}
+.access-row .access-actions{
+  display:flex;
+  gap:8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.is-disabled{
+  opacity: .55;
+  pointer-events: none;
+}
+
 /* Job Checklist modal */
 .job-modal{
   width: min(860px, 100%);
@@ -1323,7 +1722,7 @@ body.native-input #qtyNativeInput{ display:block !important; }
             alt="Xtreme Lighting Logo"
           />
           <div>
-            <div class="title">Customer Inventory (Touch)</div>
+            <div class="title" id="brandTitle">Customer Inventory (Touch)</div>
           </div>
           <div class="mobile-quick-actions" aria-label="Quick actions">
             <button class="btn-ghost mobile-quick-btn" id="btnScanQuick" type="button" title="Scan BIN">📷</button>
@@ -1333,6 +1732,15 @@ body.native-input #qtyNativeInput{ display:block !important; }
       </div>
 
       <div class="actions" id="actionsPanel">
+        <div class="user-bar" id="userBar">
+          <div class="user-pill" id="userPill" title="Signed out">
+            <span class="user-name" id="userName">Signed out</span>
+            <span class="role-badge" id="userRole">viewer</span>
+          </div>
+          <button class="btn-ghost" id="btnSignIn" type="button">Sign In</button>
+          <button class="btn-ghost" id="btnSignOut" type="button">Sign Out</button>
+          <button class="btn-ghost" id="btnUserAccess" type="button">User Access</button>
+        </div>
         <div class="action-toggles">
           <div class="chip" title="When ON, tapping a color adds +1 instantly. Long-press adds +5.">
             <input id="quickMode" type="checkbox" />
@@ -1351,7 +1759,21 @@ body.native-input #qtyNativeInput{ display:block !important; }
           </div>
         </div>
 
-        <div class="action-buttons">
+        <div class="season-select">
+          <div class="field">
+            <label>Active Season</label>
+            <select id="seasonSelect"></select>
+          </div>
+          <div class="small">Filters customers &amp; totals by season.</div>
+        </div>
+
+        <div class="page-tabs" aria-label="Page switcher">
+          <button class="tab-btn is-active" id="tabCustomer" type="button">Customer Inventory</button>
+          <button class="tab-btn" id="tabInventory" type="button">Warehouse Inventory</button>
+          <button class="tab-btn" id="tabQuote" type="button">Quote Mockup</button>
+        </div>
+
+        <div class="action-buttons" id="customerActions">
           <button class="btn-ghost" id="btnUndo" disabled>Undo</button>
           <button class="btn-ghost" id="btnRedo" disabled>Redo</button>
           <button class="btn-ghost" id="btnNewCustomer">New Customer</button>
@@ -1360,14 +1782,30 @@ body.native-input #qtyNativeInput{ display:block !important; }
           <button class="btn-ghost" id="btnScanBin">Scan BIN</button>
           <button class="btn-accent" id="btnExport">Export CSV</button>
           <button class="btn-ghost" id="btnImport">Import CSV</button>
-          <button class="btn-ghost" id="btnPrint">Print 3×5</button>
+          <button class="btn-ghost" id="btnPrint">Print 4×6</button>
+        </div>
+
+        <div class="action-buttons page-hidden" id="inventoryActions">
+          <button class="btn-ghost" id="btnInvNew">New Item</button>
+          <button class="btn-ghost" id="btnInvScanLookup">Scan Item</button>
+          <button class="btn-ghost" id="btnInvImport">Import CSV</button>
+          <button class="btn-accent" id="btnInvReport">Generate Report</button>
+          <button class="btn-ghost" id="btnInvPrintReport">Print Report</button>
+          <button class="btn-ghost" id="btnInvPrintReorder">Print Reorder</button>
+          <button class="btn-ghost" id="btnInvPrintLabel">Print Label</button>
+        </div>
+        <div class="action-buttons page-hidden" id="quoteActions">
+          <button class="btn-accent" id="btnQuotePrint">Print Quote</button>
+          <button class="btn-ghost" id="btnQuoteReset">Reset</button>
         </div>
         <input id="csvImportInput" type="file" accept=".csv" style="display:none;" />
+        <input id="invImportInput" type="file" accept=".csv" style="display:none;" />
       </div>
     </div>
   </header>
 
-  <main class="container">
+  <main class="container page" id="pageCustomer">
+    <div class="view-only-banner" id="viewOnlyBanner">View-only access. Sign in to edit or ask an admin for access.</div>
     <section class="card customer-card">
       <div class="customer-block-info">
       <h2>Customer Info</h2>
@@ -1385,6 +1823,10 @@ body.native-input #qtyNativeInput{ display:block !important; }
           <div class="input-with-btn">
             <input id="customerName" placeholder="Ex: Tamara Tsulaia" autocomplete="off" readonly />
           </div>
+        </div>
+        <div class="field" style="flex: 1; min-width: 140px;">
+          <label>Season (view only)</label>
+          <input id="seasonView" placeholder="2026" readonly />
         </div>
         <div class="field" style="display:none;">
           <label>Removal Date (view only)</label>
@@ -1450,8 +1892,10 @@ body.native-input #qtyNativeInput{ display:block !important; }
       <div class="right-top">
         <div class="status" id="status">
           <div><b>Customer:</b> <span id="statusName" class="muted">—</span></div>
+          <div><b>Season:</b> <span id="statusSeason" class="muted">—</span></div>
           <div><b>BINs:</b> <span id="statusBins" class="muted">—</span></div>
         </div>
+        <div class="season-mismatch" id="seasonMismatch" style="display:none;"></div>
 
         <div class="row" style="gap:10px;">
           <button class="btn-ghost" id="btnClearCounts">Clear Counts (Current Customer)</button>
@@ -1533,8 +1977,330 @@ body.native-input #qtyNativeInput{ display:block !important; }
           • With Quick Add OFF, tapping a color/size opens the big keypad.
         </div>
         <div class="divider" style="margin:10px 0;"></div>
-        <div class="small">Auto-sums all saved customers for the current season.</div>
+        <div class="small" id="seasonStatsNote">Auto-sums all saved customers for the current season.</div>
         <div id="seasonStats" class="count-bubbles" style="margin-top:10px;"></div>
+      </div>
+    </section>
+  </main>
+
+  <main class="container page page-hidden" id="pageInventory">
+    <section class="card">
+      <h2>Warehouse Inventory</h2>
+      <div class="muted" style="margin-bottom:10px;">
+        Scan, track, and manage stock for each item. Use the scan code to quickly locate or update items.
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Item #</label>
+          <input id="invItemNumber" placeholder="Ex: C9-RED-001" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>QTY</label>
+          <input id="invQty" type="number" inputmode="numeric" placeholder="0" />
+        </div>
+        <div class="field">
+          <label>Color</label>
+          <input id="invColor" placeholder="Ex: Warm White" autocomplete="off" />
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <div class="field">
+          <label>Suppliers</label>
+          <input id="invSuppliers" placeholder="Ex: HolidayBright, Gerson" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <input id="invCategory" placeholder="Ex: C9 Bulbs" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label>Reorder QTY</label>
+          <input id="invReorderQty" type="number" inputmode="numeric" placeholder="0" />
+        </div>
+        <div class="field">
+          <label>Shelf #</label>
+          <input id="invShelf" placeholder="Ex: A-12" autocomplete="off" />
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <div class="field">
+          <label>Unit Cost</label>
+          <input id="invUnitCost" type="number" inputmode="decimal" placeholder="0.00" />
+        </div>
+        <div class="field">
+          <label>Location Bin</label>
+          <input id="invLocationBin" placeholder="Ex: BIN-04" autocomplete="off" />
+        </div>
+        <div class="field" style="flex:2;">
+          <label>Scannable Code</label>
+          <div class="input-with-btn">
+            <input id="invScanCode" placeholder="Scan or enter code" autocomplete="off" />
+            <button id="btnInvScanCode" class="btn-ghost" type="button">Scan</button>
+          </div>
+        </div>
+        <label class="chip" title="Mark this item as scannable">
+          <input type="checkbox" id="invScannable" />
+          <div><div style="font-weight:900;">Scannable</div></div>
+        </label>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <button class="btn-accent" id="btnInvAdd" type="button">Add / Update Item</button>
+        <button class="btn-ghost" id="btnInvClear" type="button">Clear Form</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="inventory-toolbar">
+        <div class="row" style="margin:0; gap:10px; flex:1;">
+          <div class="field" style="min-width:220px;">
+            <label>Search</label>
+            <input id="invSearch" type="search" placeholder="Search item #, color, supplier, shelf, scan code" />
+          </div>
+          <div class="field" style="max-width:200px;">
+            <label>Filter</label>
+            <select id="invFilter">
+              <option value="all">All Items</option>
+              <option value="reorder">Reorder Needed</option>
+            </select>
+          </div>
+          <div class="field" style="max-width:220px;">
+            <label>Sort</label>
+            <select id="invSort">
+              <option value="item_asc">Item # (A-Z)</option>
+              <option value="item_desc">Item # (Z-A)</option>
+              <option value="qty_desc">QTY (High-Low)</option>
+              <option value="qty_asc">QTY (Low-High)</option>
+              <option value="updated_desc">Last Updated (Newest)</option>
+              <option value="updated_asc">Last Updated (Oldest)</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin:0; gap:8px; align-items:flex-end;">
+          <button class="btn-ghost" id="btnInvScanLookupInline" type="button">Scan Item</button>
+          <button class="btn-accent" id="btnInvReportInline" type="button">Generate Report</button>
+          <button class="btn-ghost" id="btnInvPrintReorderInline" type="button">Print Reorder</button>
+          <button class="btn-ghost" id="btnInvPrintLabelInline" type="button">Print Label</button>
+        </div>
+      </div>
+
+      <div class="inventory-summary" id="invSummary" style="margin:10px 0 0;">
+        <div>Total Items: 0</div>
+        <div>Total Qty: 0</div>
+        <div>Reorder Needed: 0</div>
+      </div>
+
+      <div style="margin-top:12px;" id="invTableWrap"></div>
+    </section>
+  </main>
+
+  <main class="container page page-hidden" id="pageQuote">
+    <section class="card">
+      <h2>Christmas Light Mockup &amp; Quote</h2>
+      <div class="muted" style="margin-bottom:10px;">
+        Upload a photo, calibrate, draw C9 rooflines, and build the quote in real time.
+      </div>
+
+      <!-- Pricing (top) -->
+      <div class="quote-card" style="margin-bottom:12px;">
+        <div class="row" style="margin-top:0;">
+          <div class="field" style="flex:2;">
+            <label>Customer Name</label>
+            <input id="quoteCustomer" placeholder="Ex: Smith Residence" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label>Quote Date</label>
+            <input id="quoteDate" type="date" />
+          </div>
+          <div class="field">
+            <label>Calibration Feet</label>
+            <input id="quoteCalFeet" type="number" inputmode="decimal" placeholder="10" />
+          </div>
+        </div>
+
+        <div class="divider" style="margin:12px 0;"></div>
+
+        <div class="pricing-table">
+          <div class="pt-title">Set Prices</div>
+          <div class="pt-row pt-head pt-cols-5">
+            <div>Asset</div>
+            <div>12"</div>
+            <div>15"</div>
+            <div>Per Foot</div>
+            <div>Lift Fee</div>
+          </div>
+          <div class="pt-row pt-cols-5">
+            <div class="pt-asset">C9 Install</div>
+            <div><input id="quotePricePerLight12" type="number" inputmode="decimal" placeholder="0.00" /></div>
+            <div><input id="quotePricePerLight15" type="number" inputmode="decimal" placeholder="0.00" /></div>
+            <div><input id="quotePricePerFoot" type="number" inputmode="decimal" placeholder="0.00" /></div>
+            <div><input id="quoteLiftFee" type="number" inputmode="decimal" placeholder="0.00" /></div>
+          </div>
+        </div>
+
+        <div class="pricing-table" style="margin-top:10px;">
+          <div class="pt-title">Wreaths (each)</div>
+          <div class="pt-row pt-head pt-cols-4">
+            <div>36"</div>
+            <div>48"</div>
+            <div>60"</div>
+            <div>72"</div>
+          </div>
+          <div class="pt-row pt-cols-4">
+            <div><input id="quoteWreath36Price" type="number" inputmode="decimal" placeholder="0.00" /></div>
+            <div><input id="quoteWreath48Price" type="number" inputmode="decimal" placeholder="0.00" /></div>
+            <div><input id="quoteWreath60Price" type="number" inputmode="decimal" placeholder="0.00" /></div>
+            <div><input id="quoteWreath72Price" type="number" inputmode="decimal" placeholder="0.00" /></div>
+          </div>
+        </div>
+
+        <div class="pricing-table" style="margin-top:10px;">
+          <div class="pt-title">Garland (each)</div>
+          <div class="pt-row pt-head pt-cols-2">
+            <div>4.5'</div>
+            <div>9'</div>
+          </div>
+          <div class="pt-row pt-cols-2">
+            <div><input id="quoteGarland45Price" type="number" inputmode="decimal" placeholder="0.00" /></div>
+            <div><input id="quoteGarland9Price" type="number" inputmode="decimal" placeholder="0.00" /></div>
+          </div>
+        </div>
+
+        <div class="pricing-table" style="margin-top:10px;">
+          <div class="pt-title">Mini Lights (Qty + Price per Strand)</div>
+          <div class="pt-row pt-head pt-cols-5">
+            <div>Columns</div>
+            <div>Shrubs</div>
+            <div>Trunk</div>
+            <div>Canopy</div>
+            <div>Branch</div>
+          </div>
+          <div class="pt-row pt-cols-5">
+            <div class="pt-mini"><input id="quoteMiniColumnsQty" type="number" inputmode="numeric" placeholder="Qty" /><input id="quoteMiniColumnsPrice" type="number" inputmode="decimal" placeholder="Price" /></div>
+            <div class="pt-mini"><input id="quoteMiniShrubsQty" type="number" inputmode="numeric" placeholder="Qty" /><input id="quoteMiniShrubsPrice" type="number" inputmode="decimal" placeholder="Price" /></div>
+            <div class="pt-mini"><input id="quoteMiniTrunkQty" type="number" inputmode="numeric" placeholder="Qty" /><input id="quoteMiniTrunkPrice" type="number" inputmode="decimal" placeholder="Price" /></div>
+            <div class="pt-mini"><input id="quoteMiniCanopyQty" type="number" inputmode="numeric" placeholder="Qty" /><input id="quoteMiniCanopyPrice" type="number" inputmode="decimal" placeholder="Price" /></div>
+            <div class="pt-mini"><input id="quoteMiniBranchQty" type="number" inputmode="numeric" placeholder="Qty" /><input id="quoteMiniBranchPrice" type="number" inputmode="decimal" placeholder="Price" /></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="quote-grid">
+        <div class="mockup-wrap">
+          <div class="mockup-title">
+            <h3>Mockup Canvas</h3>
+            <div class="mockup-legend" id="quoteLegend">Upload a photo to begin</div>
+          </div>
+          <div class="mockup-tools">
+            <input id="quotePhotoInput" type="file" accept="image/*" />
+            <button class="btn-ghost is-active" id="btnQuoteToolCalibrate" type="button">Calibrate</button>
+            <button class="btn-ghost" id="btnQuoteToolRoof" type="button">C9 Roofline</button>
+            <button class="btn-ghost" id="btnQuoteToolGarland" type="button">Garland</button>
+            <button class="btn-ghost" id="btnQuoteToolWreath" type="button">Wreath</button>
+            <button class="btn-ghost" id="btnQuoteClear" type="button">Clear Drawing</button>
+          </div>
+          <div class="mockup-stage" id="quoteStage">
+            <div class="muted" id="quoteStageEmpty">Upload a photo to start drawing.</div>
+            <img id="quotePhoto" alt="Uploaded house photo" style="display:none;" />
+            <canvas id="quoteCanvas" class="mockup-canvas"></canvas>
+          </div>
+        </div>
+
+        <div class="quote-card">
+          <h3 style="margin-top:0;">Add C9 Lights</h3>
+          <div class="row" style="margin-top:0;">
+            <div class="field" style="flex:1;">
+              <label>Color Pattern</label>
+              <select id="quoteColorMode">
+                <option value="single">Single Color</option>
+                <option value="multi">Multiple Colors</option>
+              </select>
+            </div>
+            <div class="field" style="flex:1;">
+              <label>Bulb Spacing</label>
+              <select id="quoteSpacing">
+                <option value="12">12" (1 per ft)</option>
+                <option value="15">15" (1 per 1.25 ft)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:10px;">
+            <div class="field" style="flex:1;">
+              <label>Drawing Style</label>
+              <select id="quoteDrawMode">
+                <option value="strand">Strand (drag)</option>
+                <option value="trace">Trace (click start/end)</option>
+                <option value="single">Single Light</option>
+              </select>
+            </div>
+            <div class="field" style="flex:1;">
+              <label>Selected Pattern</label>
+              <div id="quotePatternPreview" class="muted">—</div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:10px;">
+            <div class="field" style="flex:1;">
+              <label>Colors</label>
+              <div id="quoteColorPalette" class="row" style="gap:6px; margin-top:6px;"></div>
+            </div>
+          </div>
+
+          <div class="divider" style="margin:12px 0;"></div>
+
+          <h3>Decor Tools</h3>
+          <div class="row" style="margin-top:0;">
+            <div class="field">
+              <label>Wreath Size</label>
+              <select id="quoteWreathSize">
+                <option value="36">36"</option>
+                <option value="48">48"</option>
+                <option value="60">60"</option>
+                <option value="72">72"</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Garland Length</label>
+              <select id="quoteGarlandSize">
+                <option value="4.5">4.5'</option>
+                <option value="9">9'</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="divider" style="margin:12px 0;"></div>
+
+          <div class="quote-summary" id="quoteSummary">
+            <div class="stat">
+              <div class="label">Total C9 Bulbs</div>
+              <div class="value" id="quoteLightsTotal">0</div>
+            </div>
+            <div class="stat">
+              <div class="label">Install Subtotal</div>
+              <div class="value" id="quoteMaterialSubtotal">$0</div>
+            </div>
+            <div class="stat">
+              <div class="label">Add-ons Subtotal</div>
+              <div class="value" id="quoteLaborSubtotal">$0</div>
+            </div>
+            <div class="stat">
+              <div class="label">Grand Total</div>
+              <div class="value" id="quoteGrandTotal">$0</div>
+            </div>
+          </div>
+
+          <div class="quote-lines" id="quoteLineItems"></div>
+
+          <div class="row" style="margin-top:10px;">
+            <div class="field" style="flex:1;">
+              <label>Notes</label>
+              <textarea id="quoteNotes" rows="3" placeholder="Add notes for this quote..."></textarea>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   </main>
@@ -1661,6 +2427,10 @@ body.native-input #qtyNativeInput{ display:block !important; }
         </div>
 
         <div class="row job-schedule-row" style="margin-top:10px;">
+          <div class="field">
+            <label>Season</label>
+            <input id="seasonJob" type="number" inputmode="numeric" placeholder="2026" />
+          </div>
           <div class="field">
             <label>Removal Date</label>
             <input id="removalDateJob" type="date" />
@@ -1798,7 +2568,7 @@ body.native-input #qtyNativeInput{ display:block !important; }
     <div class="modal customers-modal">
       <div class="customers-modal-head">
         <div>
-          <h3 style="margin:0;">Customers Saved This Season</h3>
+          <h3 style="margin:0;" id="customersModalTitle">Customers Saved This Season</h3>
           <div class="meta" id="customersModalSummary">0 customer records</div>
         </div>
         <button class="btn-ghost" id="btnCustomersClose" type="button">Close</button>
@@ -1826,7 +2596,7 @@ body.native-input #qtyNativeInput{ display:block !important; }
   </div>
 
   <!-- Version badge (bottom-right) -->
-  <button class="btn-ghost version-badge" id="btnVersion" type="button" title="Open change log">v1.1.0</button>
+  <button class="btn-ghost version-badge" id="btnVersion" type="button" title="Open change log">v1.2.0</button>
 
   <!-- Change Log modal -->
   <div class="modal-backdrop" id="versionModalBackdrop" role="dialog" aria-modal="true">
@@ -1842,6 +2612,98 @@ body.native-input #qtyNativeInput{ display:block !important; }
       <div class="divider" style="margin:10px 0;"></div>
 
       <div id="versionLogBody" class="version-log"></div>
+    </div>
+  </div>
+
+  <!-- Sign In modal -->
+  <div class="modal-backdrop" id="authModalBackdrop" role="dialog" aria-modal="true">
+    <div class="modal auth-modal">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
+        <div>
+          <h3 style="margin:0;">Sign In</h3>
+          <div class="meta">Use your username and password, or an invite code.</div>
+        </div>
+        <button class="btn-ghost" id="btnAuthClose" type="button">Close</button>
+      </div>
+      <div class="divider" style="margin:10px 0;"></div>
+
+      <div class="row" style="margin-top:0;">
+        <div class="field">
+          <label>Username</label>
+          <input id="authUsername" autocomplete="username" placeholder="username" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <div class="field">
+          <label>Password</label>
+          <input id="authPassword" type="password" autocomplete="current-password" placeholder="••••••••" />
+        </div>
+      </div>
+
+      <label class="chip" style="margin-top:10px;">
+        <input type="checkbox" id="authInviteToggle" />
+        <div>
+          <div style="font-weight:900;">Use invite code</div>
+          <div class="small">First-time sign in</div>
+        </div>
+      </label>
+
+      <div id="authInviteFields" style="display:none;">
+        <div class="row" style="margin-top:10px;">
+          <div class="field">
+            <label>Invite Code</label>
+            <input id="authInviteCode" placeholder="ABC123..." autocomplete="one-time-code" />
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <div class="field">
+            <label>New Password</label>
+            <input id="authNewPassword" type="password" autocomplete="new-password" placeholder="Create a password" />
+          </div>
+        </div>
+      </div>
+
+      <div class="foot" style="margin-top:12px;">
+        <button class="btn-ghost" id="btnAuthCancel" type="button">Cancel</button>
+        <button class="btn-accent" id="btnAuthSubmit" type="button">Sign In</button>
+      </div>
+      <div class="small" id="authStatus" style="margin-top:8px; color: var(--muted);">—</div>
+    </div>
+  </div>
+
+  <!-- User Access modal -->
+  <div class="modal-backdrop" id="accessModalBackdrop" role="dialog" aria-modal="true">
+    <div class="modal access-modal">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
+        <div>
+          <h3 style="margin:0;">User Access</h3>
+          <div class="meta">Invite users, set roles, and manage access.</div>
+        </div>
+        <button class="btn-ghost" id="btnAccessClose" type="button">Close</button>
+      </div>
+      <div class="divider" style="margin:10px 0;"></div>
+
+      <div class="access-create">
+        <div class="field" style="flex:1; min-width: 180px;">
+          <label>Username</label>
+          <input id="inviteUsername" placeholder="jane" />
+        </div>
+        <div class="field" style="min-width: 160px;">
+          <label>Role</label>
+          <select id="inviteRole">
+            <option value="viewer">Viewer</option>
+            <option value="editor">Editor</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <button class="btn-accent" id="btnCreateInvite" type="button" style="height: 44px; align-self:flex-end;">Create Invite</button>
+      </div>
+
+      <div class="divider" style="margin:10px 0;"></div>
+      <div class="access-modal-body">
+        <div class="access-list" id="accessList"></div>
+      </div>
+      <div class="small" id="accessStatus" style="margin-top:8px; color: var(--muted);">—</div>
     </div>
   </div>
 
@@ -1918,10 +2780,21 @@ body.native-input #qtyNativeInput{ display:block !important; }
   if(USE_NATIVE_INPUT) document.body.classList.add("native-input");
 
 // ---------- App Version + Change Log ----------
-const APP_VERSION = "v1.1.0";
-const APP_LAST_UPDATED = "2026-02-05";
+const APP_VERSION = "v1.2.0";
+const APP_LAST_UPDATED = "2026-02-07";
 
 const CHANGELOG = [
+{
+  date: "2026-02-07",
+  feature: "Season selector + yearly history",
+  changes: [
+    "Added Active Season dropdown in the header menu",
+    "Customers list + season totals now follow the active season",
+    "Season changes can auto-clone prior customer data (BINs cleared)",
+    "BIN uniqueness now scoped per season",
+    "Added season mismatch indicator when viewing a different year"
+  ]
+},
 {
   date: "2026-02-05",
   feature: "Workflow redesign: customer info edits moved to Job Checklist modal",
@@ -2280,6 +3153,18 @@ const CHANGELOG = [
     timeoutMs: 6500,
     debounceMs: 900
   };
+  const AUTH_CONFIG = {
+    loginPath: "/inventory/api/login.php",
+    usersPath: "/inventory/api/users.php"
+  };
+  const AUTH_STORAGE_KEY = "inventory_auth_v1";
+  const authState = {
+    token: "",
+    username: "",
+    displayName: "",
+    role: "viewer",
+    expiresAt: ""
+  };
 
   // Pricing rules (C9 + Minis + Garland)
   const PRICE_RULES = {
@@ -2312,6 +3197,16 @@ const CHANGELOG = [
     return tz.toISOString().slice(0,10);
   };
 
+  function normalizeSeasonValue(v){
+    const digits = String(v || "").replace(/\D/g, "").slice(0,4);
+    const n = Number(digits || 0);
+    return n || seasonYear;
+  }
+
+  function getActiveSeason(){
+    return normalizeSeasonValue(state?.ui?.activeSeason || state?.current?.season || seasonYear);
+  }
+
   // ---------- State ----------
   const state = {
     quickMode: true,
@@ -2323,8 +3218,8 @@ const CHANGELOG = [
     // UI preference: which mini wire is currently selected
     miniWire: "Green",
 
-    // UI preference: enable/disable on-screen keyboard (text)
-    ui: { screenKeyboard: !IS_IOS },
+    // UI preference: enable/disable on-screen keyboard (text) + active season
+    ui: { screenKeyboard: !IS_IOS, page: "customer", activeSeason: seasonYear },
 
 current: {
   season: seasonYear,
@@ -2350,7 +3245,8 @@ current: {
     removalNotes: ""
   }
 },
-    records: []
+    records: [],
+    inventoryItems: []
   };
 
   let currentHasUnsavedChanges = false;
@@ -2358,6 +3254,41 @@ current: {
   let customersSearchTerm = "";
   let customersSortMode = "last_saved_desc";
   let _recordAutosaveTimer = null;
+  let activePage = "customer";
+  let inventorySearchTerm = "";
+  let inventoryFilterMode = "all";
+  let inventorySortMode = "item_asc";
+  let inventoryEditingId = null;
+  let inventorySelectedId = null;
+  const quoteState = {
+    customer: "",
+    date: "",
+    colorMode: "single",
+    selectedColors: ["Warm White"],
+    spacingIn: 12,
+    drawMode: "strand",
+    pricePerLight: 0,
+    pricePerFoot: 0,
+    liftFee: 0,
+    wreathPrices: { "36": 0, "48": 0, "60": 0, "72": 0 },
+    garlandPrices: { "4.5": 0, "9": 0 },
+    miniPrices: { columns: 0, shrubs: 0, trunk: 0, canopy: 0, branch: 0 },
+    miniQty: { columns: 0, shrubs: 0, trunk: 0, canopy: 0, branch: 0 },
+    notes: "",
+    calibrationFeet: 10
+  };
+
+  const quoteDrawing = {
+    imageLoaded: false,
+    tool: "calibrate",
+    calibrateLine: null,
+    calibrationLineObj: null,
+    pxPerFoot: 0,
+    roofSegments: [], // {a,b}
+    roofSingles: [],  // {x,y}
+    garlands: [],     // {x,y,length}
+    wreaths: []       // {x,y,size}
+  };
 
   // ---------- DOM ----------
   const $ = (id) => document.getElementById(id);
@@ -2396,21 +3327,25 @@ const btnPhotoCloseEl  = $("btnPhotoClose");
   const quickModeEl      = $("quickMode");
   const kbToggleEl       = $("kbToggle");
   const kbToggleStatusEl = $("kbToggleStatus");
+  const seasonSelectEl   = $("seasonSelect");
   const remoteSyncStatusEl = $("remoteSyncStatus");
   const btnCustomersEl   = $("btnCustomers");
   const btnCustomersCloseEl = $("btnCustomersClose");
   const customersModalBackdropEl = $("customersModalBackdrop");
   const customersSearchEl = $("customersSearch");
   const customersSortEl = $("customersSort");
+  const customersModalTitleEl = $("customersModalTitle");
   const customersModalSummaryEl = $("customersModalSummary");
   const customerNameEl   = $("customerName");
   const customerCompanyEl = $("customerCompany");
   const customerPhoneEl = $("customerPhone");
   const customerAddressEl = $("customerAddress");
+  const seasonViewEl     = $("seasonView");
   const customerNameJobEl= $("customerNameJob");
   const customerCompanyJobEl = $("customerCompanyJob");
   const customerPhoneJobEl = $("customerPhoneJob");
   const customerAddressJobEl = $("customerAddressJob");
+  const seasonJobEl      = $("seasonJob");
   const removalDateJobEl = $("removalDateJob");
   const timerSettingJobEl= $("timerSettingJob");
   const removalDateEl    = $("removalDate");
@@ -2425,6 +3360,8 @@ const btnPhotoCloseEl  = $("btnPhotoClose");
 
   const statusNameEl     = $("statusName");
   const statusBinsEl     = $("statusBins");
+  const statusSeasonEl   = $("statusSeason");
+  const seasonMismatchEl = $("seasonMismatch");
   const statusTimerEl    = $("statusTimer");
   const statusRemovalEl  = $("statusRemoval");
 
@@ -2483,6 +3420,7 @@ const btnPhotoCloseEl  = $("btnPhotoClose");
   const openQrImgEl      = $("openQrImg");
   const openQrTextEl     = $("openQrText");
   const seasonStatsEl    = $("seasonStats");
+  const seasonStatsNoteEl = $("seasonStatsNote");
 
   // Version / Change Log
   const btnVersionEl          = $("btnVersion");
@@ -2490,11 +3428,135 @@ const btnPhotoCloseEl  = $("btnPhotoClose");
   const btnVersionCloseEl     = $("btnVersionClose");
   const versionMetaEl         = $("versionMeta");
   const versionLogBodyEl      = $("versionLogBody");
+  const tabCustomerEl         = $("tabCustomer");
+  const tabInventoryEl        = $("tabInventory");
+  const tabQuoteEl            = $("tabQuote");
+  const pageCustomerEl        = $("pageCustomer");
+  const pageInventoryEl       = $("pageInventory");
+  const pageQuoteEl           = $("pageQuote");
+  const customerActionsEl     = $("customerActions");
+  const inventoryActionsEl    = $("inventoryActions");
+  const quoteActionsEl        = $("quoteActions");
+  const brandTitleEl          = $("brandTitle");
+  const viewOnlyBannerEl      = $("viewOnlyBanner");
+
+  // Auth / Access DOM
+  const userBarEl        = $("userBar");
+  const userPillEl       = $("userPill");
+  const userNameEl       = $("userName");
+  const userRoleEl       = $("userRole");
+  const btnSignInEl      = $("btnSignIn");
+  const btnSignOutEl     = $("btnSignOut");
+  const btnUserAccessEl  = $("btnUserAccess");
+  const authModalBackdropEl = $("authModalBackdrop");
+  const btnAuthCloseEl      = $("btnAuthClose");
+  const btnAuthCancelEl     = $("btnAuthCancel");
+  const btnAuthSubmitEl     = $("btnAuthSubmit");
+  const authUsernameEl      = $("authUsername");
+  const authPasswordEl      = $("authPassword");
+  const authInviteToggleEl  = $("authInviteToggle");
+  const authInviteFieldsEl  = $("authInviteFields");
+  const authInviteCodeEl    = $("authInviteCode");
+  const authNewPasswordEl   = $("authNewPassword");
+  const authStatusEl        = $("authStatus");
+
+  const accessModalBackdropEl = $("accessModalBackdrop");
+  const btnAccessCloseEl      = $("btnAccessClose");
+  const inviteUsernameEl      = $("inviteUsername");
+  const inviteRoleEl          = $("inviteRole");
+  const btnCreateInviteEl     = $("btnCreateInvite");
+  const accessListEl          = $("accessList");
+  const accessStatusEl        = $("accessStatus");
 
   // Phrases
   const phraseRepairEl      = $("phraseRepair");
   const phraseTightenEl     = $("phraseTighten");
   const phraseColorChangeEl = $("phraseColorChange");
+
+  // Inventory DOM
+  const invItemNumberEl   = $("invItemNumber");
+  const invQtyEl          = $("invQty");
+  const invColorEl        = $("invColor");
+  const invSuppliersEl    = $("invSuppliers");
+  const invCategoryEl     = $("invCategory");
+  const invReorderQtyEl   = $("invReorderQty");
+  const invShelfEl        = $("invShelf");
+  const invUnitCostEl     = $("invUnitCost");
+  const invLocationBinEl  = $("invLocationBin");
+  const invScanCodeEl     = $("invScanCode");
+  const invScannableEl    = $("invScannable");
+  const invSearchEl       = $("invSearch");
+  const invFilterEl       = $("invFilter");
+  const invSortEl         = $("invSort");
+  const invTableWrapEl    = $("invTableWrap");
+  const invSummaryEl      = $("invSummary");
+  const btnInvAddEl       = $("btnInvAdd");
+  const btnInvClearEl     = $("btnInvClear");
+  const btnInvNewEl       = $("btnInvNew");
+  const btnInvScanCodeEl  = $("btnInvScanCode");
+  const btnInvScanLookupEl       = $("btnInvScanLookup");
+  const btnInvScanLookupInlineEl = $("btnInvScanLookupInline");
+  const btnInvReportEl           = $("btnInvReport");
+  const btnInvReportInlineEl     = $("btnInvReportInline");
+  const btnInvImportEl           = $("btnInvImport");
+  const invImportInputEl         = $("invImportInput");
+  const btnInvPrintReportEl      = $("btnInvPrintReport");
+  const btnInvPrintReorderEl     = $("btnInvPrintReorder");
+  const btnInvPrintReorderInlineEl = $("btnInvPrintReorderInline");
+  const btnInvPrintLabelEl       = $("btnInvPrintLabel");
+  const btnInvPrintLabelInlineEl = $("btnInvPrintLabelInline");
+
+  // Quote DOM
+  const quoteCustomerEl      = $("quoteCustomer");
+  const quoteDateEl          = $("quoteDate");
+  const quoteLinearFeetEl    = $("quoteLinearFeet");
+  const quoteCalFeetEl       = $("quoteCalFeet");
+  const quotePricePerLight12El = $("quotePricePerLight12");
+  const quotePricePerLight15El = $("quotePricePerLight15");
+  const quotePricePerFootEl  = $("quotePricePerFoot");
+  const quoteLiftFeeEl       = $("quoteLiftFee");
+  const quoteWreath36PriceEl = $("quoteWreath36Price");
+  const quoteWreath48PriceEl = $("quoteWreath48Price");
+  const quoteWreath60PriceEl = $("quoteWreath60Price");
+  const quoteWreath72PriceEl = $("quoteWreath72Price");
+  const quoteGarland45PriceEl= $("quoteGarland45Price");
+  const quoteGarland9PriceEl = $("quoteGarland9Price");
+  const quoteMiniColumnsPriceEl = $("quoteMiniColumnsPrice");
+  const quoteMiniColumnsQtyEl   = $("quoteMiniColumnsQty");
+  const quoteMiniShrubsPriceEl  = $("quoteMiniShrubsPrice");
+  const quoteMiniShrubsQtyEl    = $("quoteMiniShrubsQty");
+  const quoteMiniTrunkPriceEl   = $("quoteMiniTrunkPrice");
+  const quoteMiniTrunkQtyEl     = $("quoteMiniTrunkQty");
+  const quoteMiniCanopyPriceEl  = $("quoteMiniCanopyPrice");
+  const quoteMiniCanopyQtyEl    = $("quoteMiniCanopyQty");
+  const quoteMiniBranchPriceEl  = $("quoteMiniBranchPrice");
+  const quoteMiniBranchQtyEl    = $("quoteMiniBranchQty");
+  const quoteNotesEl         = $("quoteNotes");
+  const quoteLightsTotalEl   = $("quoteLightsTotal");
+  const quoteMaterialSubtotalEl = $("quoteMaterialSubtotal");
+  const quoteLaborSubtotalEl = $("quoteLaborSubtotal");
+  const quoteGrandTotalEl    = $("quoteGrandTotal");
+  const quoteLegendEl        = $("quoteLegend");
+  const quoteLineItemsEl     = $("quoteLineItems");
+  const quoteStageEl         = $("quoteStage");
+  const quoteStageEmptyEl    = $("quoteStageEmpty");
+  const quotePhotoInputEl    = $("quotePhotoInput");
+  const quotePhotoEl         = $("quotePhoto");
+  const quoteCanvasEl        = $("quoteCanvas");
+  const btnQuoteToolCalibrateEl = $("btnQuoteToolCalibrate");
+  const btnQuoteToolRoofEl      = $("btnQuoteToolRoof");
+  const btnQuoteToolGarlandEl   = $("btnQuoteToolGarland");
+  const btnQuoteToolWreathEl    = $("btnQuoteToolWreath");
+  const btnQuoteClearEl         = $("btnQuoteClear");
+  const quoteColorModeEl     = $("quoteColorMode");
+  const quoteSpacingEl       = $("quoteSpacing");
+  const quoteDrawModeEl      = $("quoteDrawMode");
+  const quotePatternPreviewEl= $("quotePatternPreview");
+  const quoteColorPaletteEl  = $("quoteColorPalette");
+  const quoteWreathSizeEl    = $("quoteWreathSize");
+  const quoteGarlandSizeEl   = $("quoteGarlandSize");
+  const btnQuotePrintEl      = $("btnQuotePrint");
+  const btnQuoteResetEl      = $("btnQuoteReset");
 
   // Keyboard modal DOM
   const kbBackdropEl = $("kbBackdrop");
@@ -2723,6 +3785,288 @@ function closeCustomersModal(){
 
   function deepClone(obj){ return JSON.parse(JSON.stringify(obj)); }
 
+  // ---------- Auth / Access ----------
+  function authIsExpired(){
+    if(!authState.expiresAt) return false;
+    const exp = new Date(authState.expiresAt);
+    return Number.isNaN(exp.getTime()) ? false : (Date.now() > exp.getTime());
+  }
+
+  function authIsSignedIn(){
+    return !!authState.token && !authIsExpired();
+  }
+
+  function authCanEdit(){
+    return authState.role === "admin" || authState.role === "editor";
+  }
+
+  function authCanAdmin(){
+    return authState.role === "admin";
+  }
+
+  function authHeaders(headers = {}){
+    if(authIsSignedIn()) headers["X-Auth-Token"] = authState.token;
+    return headers;
+  }
+
+  function authUrl(path){
+    return remoteUrl(path);
+  }
+
+  function updateAuthUI(){
+    const signedIn = authIsSignedIn();
+    if(userNameEl) userNameEl.textContent = signedIn ? (authState.displayName || authState.username || "Signed in") : "Signed out";
+    if(userRoleEl) userRoleEl.textContent = signedIn ? authState.role : "viewer";
+    if(userPillEl) userPillEl.title = signedIn ? "Signed in" : "Signed out";
+    if(btnSignInEl) btnSignInEl.style.display = signedIn ? "none" : "inline-flex";
+    if(btnSignOutEl) btnSignOutEl.style.display = signedIn ? "inline-flex" : "none";
+    if(btnUserAccessEl) btnUserAccessEl.style.display = authCanAdmin() ? "inline-flex" : "none";
+
+    document.body.classList.toggle("role-viewer", !authCanEdit());
+    if(viewOnlyBannerEl) viewOnlyBannerEl.style.display = authCanEdit() ? "none" : "block";
+    setEditButtonsEnabled(authCanEdit());
+
+    if(remoteEnabled()){
+      if(!authIsSignedIn()){
+        setRemoteStatus("SIGN IN");
+      }else if(!authCanEdit()){
+        setRemoteStatus("VIEW ONLY");
+      }
+    }
+  }
+
+  function setEditButtonsEnabled(enabled){
+    const list = [
+      btnSaveCustomerEl, btnSaveCustomerQuickEl, btnNewCustomerEl,
+      btnUndoEl, btnRedoEl, btnImportEl,
+      btnInvNewEl, btnInvImportEl, btnInvAddEl, btnInvClearEl,
+      btnQuoteResetEl
+    ];
+    list.forEach((btn) => {
+      if(!btn) return;
+      btn.disabled = !enabled;
+      btn.classList.toggle("is-disabled", !enabled);
+    });
+  }
+
+  function loadAuthFromStorage(){
+    try{
+      const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+      if(!raw) return;
+      const data = JSON.parse(raw);
+      if(!data || typeof data !== "object") return;
+      authState.token = String(data.token || "");
+      authState.username = String(data.username || "");
+      authState.displayName = String(data.displayName || "");
+      authState.role = String(data.role || "viewer");
+      authState.expiresAt = String(data.expiresAt || "");
+    }catch(e){}
+  }
+
+  function persistAuth(){
+    try{
+      const payload = {
+        token: authState.token,
+        username: authState.username,
+        displayName: authState.displayName,
+        role: authState.role,
+        expiresAt: authState.expiresAt
+      };
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(payload));
+    }catch(e){}
+  }
+
+  function setAuthState(next){
+    authState.token = String(next.token || "");
+    authState.username = String(next.username || "");
+    authState.displayName = String(next.displayName || "");
+    authState.role = String(next.role || "viewer");
+    authState.expiresAt = String(next.expiresAt || "");
+    persistAuth();
+    updateAuthUI();
+  }
+
+  function clearAuthState(){
+    authState.token = "";
+    authState.username = "";
+    authState.displayName = "";
+    authState.role = "viewer";
+    authState.expiresAt = "";
+    persistAuth();
+    updateAuthUI();
+  }
+
+  function openAuthModal(){
+    if(!authModalBackdropEl) return;
+    closeHeaderMenuIfPhone();
+    if(authInviteToggleEl) authInviteToggleEl.checked = false;
+    if(authInviteFieldsEl) authInviteFieldsEl.style.display = "none";
+    if(authStatusEl) authStatusEl.textContent = "—";
+    authModalBackdropEl.style.display = "flex";
+    document.body.classList.add("modal-open");
+    if(authUsernameEl) authUsernameEl.focus();
+  }
+
+  function closeAuthModal(){
+    if(!authModalBackdropEl) return;
+    authModalBackdropEl.style.display = "none";
+    document.body.classList.remove("modal-open");
+  }
+
+  function openAccessModal(){
+    if(!accessModalBackdropEl) return;
+    if(!authCanAdmin()){
+      toast("Admin access required");
+      return;
+    }
+    closeHeaderMenuIfPhone();
+    accessModalBackdropEl.style.display = "flex";
+    document.body.classList.add("modal-open");
+    loadAccessList();
+  }
+
+  function closeAccessModal(){
+    if(!accessModalBackdropEl) return;
+    accessModalBackdropEl.style.display = "none";
+    document.body.classList.remove("modal-open");
+  }
+
+  async function authLogin(payload){
+    const url = authUrl(AUTH_CONFIG.loginPath);
+    const headers = { "Content-Type":"application/json" };
+    const data = await fetchJsonWithTimeout(url, { method:"POST", headers, body: JSON.stringify(payload) });
+    return data;
+  }
+
+  async function loadAccessList(){
+    if(!accessListEl) return;
+    accessListEl.innerHTML = "";
+    if(accessStatusEl) accessStatusEl.textContent = "Loading…";
+    try{
+      const url = authUrl(AUTH_CONFIG.usersPath);
+      const headers = authHeaders({});
+      const data = await fetchJsonWithTimeout(url, { method:"GET", headers });
+      const users = Array.isArray(data?.users) ? data.users : [];
+      renderAccessList(users);
+      if(accessStatusEl) accessStatusEl.textContent = `Loaded ${users.length} user(s)`;
+    }catch(err){
+      if(accessStatusEl) accessStatusEl.textContent = `Error: ${err.message || "Unable to load users"}`;
+    }
+  }
+
+  async function updateAccess(payload){
+    const url = authUrl(AUTH_CONFIG.usersPath);
+    const headers = authHeaders({ "Content-Type":"application/json" });
+    const data = await fetchJsonWithTimeout(url, { method:"POST", headers, body: JSON.stringify(payload) });
+    return data;
+  }
+
+  function renderAccessList(users){
+    if(!accessListEl) return;
+    accessListEl.innerHTML = "";
+    if(!users.length){
+      accessListEl.innerHTML = "<div class='small' style='color: var(--muted);'>No users yet.</div>";
+      return;
+    }
+    users.forEach(u => {
+      const row = document.createElement("div");
+      row.className = "access-row";
+
+      const left = document.createElement("div");
+      left.style.minWidth = "180px";
+      left.innerHTML = `<div style="font-weight:900;">${escapeHtml(u.username || "")}</div>
+        <div class="meta">${escapeHtml(u.status || "active")} • ${escapeHtml(u.lastLoginAt || "never logged in")}</div>`;
+
+      const roleWrap = document.createElement("div");
+      roleWrap.className = "field";
+      roleWrap.style.minWidth = "140px";
+      const roleSelect = document.createElement("select");
+      ["viewer","editor","admin"].forEach(r => {
+        const opt = document.createElement("option");
+        opt.value = r;
+        opt.textContent = r.charAt(0).toUpperCase() + r.slice(1);
+        if(String(u.role || "viewer") === r) opt.selected = true;
+        roleSelect.appendChild(opt);
+      });
+      roleSelect.addEventListener("change", async () => {
+        try{
+          await updateAccess({ action:"setRole", userId: u.id, role: roleSelect.value });
+          toast("Role updated");
+          loadAccessList();
+        }catch(err){
+          toast(err.message || "Update failed");
+        }
+      });
+      roleWrap.appendChild(roleSelect);
+
+      const inviteWrap = document.createElement("div");
+      inviteWrap.style.minWidth = "180px";
+      inviteWrap.innerHTML = u.inviteCode ? `<div class="meta">Invite code</div><div style="font-weight:900;">${escapeHtml(u.inviteCode)}</div>` : `<div class="meta">Invite code</div><div style="font-weight:900;">—</div>`;
+
+      const actions = document.createElement("div");
+      actions.className = "access-actions";
+      const btnReset = document.createElement("button");
+      btnReset.className = "btn-ghost";
+      btnReset.type = "button";
+      btnReset.textContent = "Reset Invite";
+      btnReset.addEventListener("click", async () => {
+        try{
+          await updateAccess({ action:"resetInvite", userId: u.id });
+          toast("Invite reset");
+          loadAccessList();
+        }catch(err){
+          toast(err.message || "Update failed");
+        }
+      });
+
+      const btnToggle = document.createElement("button");
+      btnToggle.className = "btn-ghost";
+      btnToggle.type = "button";
+      const isDisabled = String(u.status || "") === "disabled";
+      btnToggle.textContent = isDisabled ? "Activate" : "Disable";
+      btnToggle.addEventListener("click", async () => {
+        try{
+          await updateAccess({ action:"setStatus", userId: u.id, status: isDisabled ? "active" : "disabled" });
+          toast(isDisabled ? "User activated" : "User disabled");
+          loadAccessList();
+        }catch(err){
+          toast(err.message || "Update failed");
+        }
+      });
+
+      const btnCopy = document.createElement("button");
+      btnCopy.className = "btn-ghost";
+      btnCopy.type = "button";
+      btnCopy.textContent = "Copy Invite";
+      btnCopy.disabled = !u.inviteCode;
+      btnCopy.addEventListener("click", async () => {
+        if(!u.inviteCode) return;
+        try{
+          await navigator.clipboard.writeText(u.inviteCode);
+          toast("Invite copied");
+        }catch(e){
+          toast("Copy failed");
+        }
+      });
+
+      actions.appendChild(btnReset);
+      actions.appendChild(btnToggle);
+      actions.appendChild(btnCopy);
+
+      row.appendChild(left);
+      row.appendChild(roleWrap);
+      row.appendChild(inviteWrap);
+      row.appendChild(actions);
+      accessListEl.appendChild(row);
+    });
+  }
+
+  function escapeHtml(str){
+    return String(str || "").replace(/[&<>\"']/g, (m) => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+    }[m]));
+  }
+
   function fmtClock(d){
     if(!(d instanceof Date)) return "—";
     return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -2751,12 +4095,15 @@ function closeCustomersModal(){
       const data = JSON.parse(raw);
       if(data && typeof data === "object"){
         Object.assign(state, data);
-        if(!state.current?.season) state.current.season = seasonYear;
+        if(!state.current?.season) state.current.season = (state.ui?.activeSeason || seasonYear);
         if(!state.current?.removalDate) state.current.removalDate = todayISO();
 
         // Ensure UI prefs exist
-        if(!state.ui || typeof state.ui !== "object") state.ui = { screenKeyboard: !IS_IOS };
+        if(!state.ui || typeof state.ui !== "object") state.ui = { screenKeyboard: !IS_IOS, page: "customer", activeSeason: seasonYear };
         if(typeof state.ui.screenKeyboard !== "boolean") state.ui.screenKeyboard = !IS_IOS;
+        if(typeof state.ui.page !== "string") state.ui.page = "customer";
+        if(!state.ui.activeSeason) state.ui.activeSeason = (state.current?.season || seasonYear);
+        if(typeof state.ui.season2025Locked !== "boolean") state.ui.season2025Locked = false;
 
         if(typeof state.current?.notes !== "string") state.current.notes = "";
         if(NOTES_FORCE_UPPERCASE){
@@ -2766,9 +4113,24 @@ function closeCustomersModal(){
         if(!state.current?.counts) state.current.counts = {};
         if(!Array.isArray(state.current?.bins)) state.current.bins = [];
         if(!Array.isArray(state.records)) state.records = [];
+        if(!Array.isArray(state.inventoryItems)) state.inventoryItems = [];
         state.records.forEach(ensureCustomerFields);
         // Migrate legacy BIN strings to {size,code} objects
         state.current.bins = (state.current.bins || []).map(normalizeBinEntry).filter(Boolean);
+
+        // Season migration: move existing customers to 2025 (if not yet applied or still on 2026)
+        const records = Array.isArray(state.records) ? state.records : [];
+        const seasons = records.map(r => Number(r && r.season || 0)).filter(Boolean);
+        const has2025 = seasons.includes(2025);
+        const all2026Plus = seasons.length ? seasons.every(s => s >= 2026) : false;
+        const needs2025Migration = (!state.ui.season2025Locked) || (!has2025 && all2026Plus);
+        if(needs2025Migration){
+          records.forEach(r => { r.season = 2025; });
+          state.current.season = 2025;
+          state.ui.activeSeason = 2025;
+          state.ui.season2025Locked = true;
+          save();
+        }
       }
     }catch(e){}
   }
@@ -2818,15 +4180,21 @@ function closeCustomersModal(){
     const url = remoteUrl(REMOTE_SYNC.loadPath);
     const headers = {};
     if(REMOTE_SYNC.apiKey) headers["X-API-Key"] = REMOTE_SYNC.apiKey;
+    authHeaders(headers);
     return await fetchJsonWithTimeout(url, { method:"GET", headers });
   }
 
   async function remoteSaveNow(){
     if(!remoteEnabled() || _remoteHydrating) return;
+    if(!(authCanEdit() || REMOTE_SYNC.apiKey)){
+      setRemoteStatus("VIEW ONLY");
+      return;
+    }
     setRemoteStatus("SAVING…");
     const url = remoteUrl(REMOTE_SYNC.savePath);
     const headers = { "Content-Type":"application/json" };
     if(REMOTE_SYNC.apiKey) headers["X-API-Key"] = REMOTE_SYNC.apiKey;
+    authHeaders(headers);
 
     // Send full app state (includes records + current work)
     const payload = { version: 1, updatedAt: new Date().toISOString(), state };
@@ -2845,6 +4213,10 @@ function closeCustomersModal(){
     if(!remoteEnabled()) return;
     setRemoteStatus("CONNECTING…");
     try{
+      if(!authIsSignedIn() && !REMOTE_SYNC.apiKey){
+        setRemoteStatus("SIGN IN");
+        return;
+      }
       _remoteHydrating = true;
       const payload = await remoteLoad();
       const next = payload && payload.state ? payload.state : payload;
@@ -2909,7 +4281,682 @@ function closeCustomersModal(){
     if(opts.skipRecordAutosave !== true && opts.currentDirty === true){
       scheduleRecordAutosave();
     }
-    if(doRemote) scheduleRemoteSave();
+    if(doRemote && (authCanEdit() || REMOTE_SYNC.apiKey)) scheduleRemoteSave();
+  }
+
+  // ---------- Page Switcher ----------
+  function setActivePage(page, opts = {}){
+    const next = (page === "inventory" || page === "quote") ? page : "customer";
+    activePage = next;
+    if(state.ui) state.ui.page = next;
+
+    if(pageCustomerEl) pageCustomerEl.classList.toggle("page-hidden", next !== "customer");
+    if(pageInventoryEl) pageInventoryEl.classList.toggle("page-hidden", next !== "inventory");
+    if(pageQuoteEl) pageQuoteEl.classList.toggle("page-hidden", next !== "quote");
+    if(tabCustomerEl) tabCustomerEl.classList.toggle("is-active", next === "customer");
+    if(tabInventoryEl) tabInventoryEl.classList.toggle("is-active", next === "inventory");
+    if(tabQuoteEl) tabQuoteEl.classList.toggle("is-active", next === "quote");
+    if(customerActionsEl) customerActionsEl.classList.toggle("page-hidden", next !== "customer");
+    if(inventoryActionsEl) inventoryActionsEl.classList.toggle("page-hidden", next !== "inventory");
+    if(quoteActionsEl) quoteActionsEl.classList.toggle("page-hidden", next !== "quote");
+
+    if(brandTitleEl){
+      brandTitleEl.textContent =
+        (next === "inventory") ? "Warehouse Inventory"
+        : (next === "quote") ? "Quote Mockup"
+        : "Customer Inventory (Touch)";
+    }
+
+    if(opts.save !== false){
+      save({ currentDirty: false, skipRecordAutosave: true });
+    }
+  }
+
+  // ---------- Inventory Helpers ----------
+  function ensureInventoryItems(){
+    if(!Array.isArray(state.inventoryItems)) state.inventoryItems = [];
+    return state.inventoryItems;
+  }
+
+  function invNumber(v){
+    const n = Number(String(v ?? "").replace(/[^\d.-]/g, ""));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function inventoryFromForm(){
+    return {
+      itemNumber: String(invItemNumberEl?.value || "").trim(),
+      qty: invNumber(invQtyEl?.value),
+      color: String(invColorEl?.value || "").trim(),
+      suppliers: String(invSuppliersEl?.value || "").trim(),
+      category: String(invCategoryEl?.value || "").trim(),
+      reorderQty: invNumber(invReorderQtyEl?.value),
+      shelf: String(invShelfEl?.value || "").trim(),
+      unitCost: invNumber(invUnitCostEl?.value),
+      locationBin: String(invLocationBinEl?.value || "").trim(),
+      scannable: !!(invScannableEl && invScannableEl.checked),
+      scanCode: String(invScanCodeEl?.value || "").trim()
+    };
+  }
+
+  function setInventoryForm(item){
+    if(!item) return;
+    if(invItemNumberEl) invItemNumberEl.value = item.itemNumber || "";
+    if(invQtyEl) invQtyEl.value = Number(item.qty || 0);
+    if(invColorEl) invColorEl.value = item.color || "";
+    if(invSuppliersEl) invSuppliersEl.value = item.suppliers || "";
+    if(invCategoryEl) invCategoryEl.value = item.category || "";
+    if(invReorderQtyEl) invReorderQtyEl.value = Number(item.reorderQty || 0);
+    if(invShelfEl) invShelfEl.value = item.shelf || "";
+    if(invUnitCostEl) invUnitCostEl.value = Number(item.unitCost || 0);
+    if(invLocationBinEl) invLocationBinEl.value = item.locationBin || "";
+    if(invScanCodeEl) invScanCodeEl.value = item.scanCode || "";
+    if(invScannableEl) invScannableEl.checked = !!item.scannable;
+    inventoryEditingId = item.id || null;
+    inventorySelectedId = item.id || null;
+    renderInventory();
+  }
+
+  function clearInventoryForm(){
+    if(invItemNumberEl) invItemNumberEl.value = "";
+    if(invQtyEl) invQtyEl.value = "";
+    if(invColorEl) invColorEl.value = "";
+    if(invSuppliersEl) invSuppliersEl.value = "";
+    if(invCategoryEl) invCategoryEl.value = "";
+    if(invReorderQtyEl) invReorderQtyEl.value = "";
+    if(invShelfEl) invShelfEl.value = "";
+    if(invUnitCostEl) invUnitCostEl.value = "";
+    if(invLocationBinEl) invLocationBinEl.value = "";
+    if(invScanCodeEl) invScanCodeEl.value = "";
+    if(invScannableEl) invScannableEl.checked = false;
+    inventoryEditingId = null;
+    inventorySelectedId = null;
+    renderInventory();
+  }
+
+  function inventoryIsReorderNeeded(item){
+    const qty = Number(item.qty || 0);
+    const reorder = Number(item.reorderQty || 0);
+    return reorder > 0 && qty <= reorder;
+  }
+
+  function addOrUpdateInventoryItem(){
+    const next = inventoryFromForm();
+    if(!next.itemNumber){
+      toast("Item # is required");
+      return;
+    }
+
+    const items = ensureInventoryItems();
+    const now = new Date().toISOString();
+    let idx = -1;
+    if(inventoryEditingId) idx = items.findIndex(i => i.id === inventoryEditingId);
+    if(idx < 0){
+      const key = next.itemNumber.toLowerCase();
+      idx = items.findIndex(i => String(i.itemNumber || "").toLowerCase() === key);
+    }
+
+    if(idx >= 0){
+      items[idx] = { ...items[idx], ...next, updatedAt: now };
+      inventoryEditingId = items[idx].id;
+      inventorySelectedId = items[idx].id;
+      toast("Inventory item updated");
+    }else{
+      const item = { id: uid(), createdAt: now, updatedAt: now, ...next };
+      items.unshift(item);
+      inventoryEditingId = item.id;
+      inventorySelectedId = item.id;
+      toast("Inventory item added");
+    }
+
+    save({ currentDirty: false, skipRecordAutosave: true });
+    renderInventory();
+  }
+
+  function deleteInventoryItem(id){
+    if(!id) return;
+    const items = ensureInventoryItems();
+    const idx = items.findIndex(i => i.id === id);
+    if(idx < 0) return;
+    if(!confirm("Delete this inventory item?")) return;
+    items.splice(idx, 1);
+    if(inventoryEditingId === id) inventoryEditingId = null;
+    if(inventorySelectedId === id) inventorySelectedId = null;
+    save({ currentDirty: false, skipRecordAutosave: true });
+    renderInventory();
+    toast("Item deleted");
+  }
+
+  function inventoryMatchesSearch(item, term){
+    if(!term) return true;
+    const t = term.toLowerCase();
+    return [
+      item.itemNumber,
+      item.color,
+      item.suppliers,
+      item.category,
+      item.shelf,
+      item.locationBin,
+      item.scanCode
+    ].some(v => String(v || "").toLowerCase().includes(t));
+  }
+
+  function inventorySort(items){
+    const sorted = items.slice();
+    sorted.sort((a, b) => {
+      if(inventorySortMode === "item_desc"){
+        return String(b.itemNumber || "").localeCompare(String(a.itemNumber || ""), undefined, { sensitivity: "base" });
+      }
+      if(inventorySortMode === "qty_desc") return Number(b.qty || 0) - Number(a.qty || 0);
+      if(inventorySortMode === "qty_asc") return Number(a.qty || 0) - Number(b.qty || 0);
+      if(inventorySortMode === "updated_asc"){
+        return (Date.parse(a.updatedAt || "") || 0) - (Date.parse(b.updatedAt || "") || 0);
+      }
+      if(inventorySortMode === "updated_desc"){
+        return (Date.parse(b.updatedAt || "") || 0) - (Date.parse(a.updatedAt || "") || 0);
+      }
+      return String(a.itemNumber || "").localeCompare(String(b.itemNumber || ""), undefined, { sensitivity: "base" });
+    });
+    return sorted;
+  }
+
+  function renderInventory(){
+    if(!invTableWrapEl) return;
+    const items = ensureInventoryItems();
+    const totalItems = items.length;
+    const totalQty = items.reduce((sum, i) => sum + Number(i.qty || 0), 0);
+    const reorderCount = items.filter(inventoryIsReorderNeeded).length;
+
+    if(invSummaryEl){
+    invSummaryEl.innerHTML = `
+        <div>Total Items: ${totalItems}</div>
+        <div>Total Qty: ${totalQty}</div>
+        <div><b>Reorder Needed:</b> ${reorderCount}</div>
+      `;
+    }
+
+    let filtered = items.filter(i => inventoryMatchesSearch(i, inventorySearchTerm));
+    if(inventoryFilterMode === "reorder"){
+      filtered = filtered.filter(inventoryIsReorderNeeded);
+    }
+
+    const sorted = inventorySort(filtered);
+
+    if(!sorted.length){
+      invTableWrapEl.innerHTML = `<div class="inv-table"><div class="inv-empty">No inventory items yet.</div></div>`;
+      return;
+    }
+
+    invTableWrapEl.innerHTML = `
+      <div class="inv-table-scroll">
+      <div class="inv-table">
+        <div class="inv-row inv-head">
+          <div class="inv-cell">Item #</div>
+          <div class="inv-cell">QTY</div>
+          <div class="inv-cell">Color</div>
+          <div class="inv-cell">Suppliers</div>
+          <div class="inv-cell">Category</div>
+          <div class="inv-cell">Reorder QTY</div>
+          <div class="inv-cell">Shelf #</div>
+          <div class="inv-cell">Location Bin</div>
+          <div class="inv-cell">Unit Cost</div>
+          <div class="inv-cell">Scannable</div>
+          <div class="inv-cell">Scan Code</div>
+          <div class="inv-cell">Updated</div>
+          <div class="inv-cell" style="text-align:right;">Actions</div>
+        </div>
+        ${sorted.map(item => {
+          const low = inventoryIsReorderNeeded(item);
+          const selected = inventorySelectedId && inventorySelectedId === item.id;
+          const updated = item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : "—";
+          const unitCost = Number(item.unitCost || 0);
+          return `
+            <div class="inv-row ${low ? "low-stock" : ""} ${selected ? "is-selected" : ""}" data-id="${escapeHtml(item.id)}">
+              <div class="inv-cell" title="${escapeHtml(item.itemNumber || "")}">${escapeHtml(item.itemNumber || "—")}</div>
+              <div class="inv-cell">${Number(item.qty || 0)}</div>
+              <div class="inv-cell" title="${escapeHtml(item.color || "")}">${escapeHtml(item.color || "—")}</div>
+              <div class="inv-cell" title="${escapeHtml(item.suppliers || "")}">${escapeHtml(item.suppliers || "—")}</div>
+              <div class="inv-cell" title="${escapeHtml(item.category || "")}">${escapeHtml(item.category || "—")}</div>
+              <div class="inv-cell">${Number(item.reorderQty || 0)}</div>
+              <div class="inv-cell">${escapeHtml(item.shelf || "—")}</div>
+              <div class="inv-cell">${escapeHtml(item.locationBin || "—")}</div>
+              <div class="inv-cell">${unitCost ? `$${unitCost.toFixed(2)}` : "—"}</div>
+              <div class="inv-cell">${item.scannable ? "Yes" : "No"}</div>
+              <div class="inv-cell" title="${escapeHtml(item.scanCode || "")}">${escapeHtml(item.scanCode || "—")}</div>
+              <div class="inv-cell">${escapeHtml(updated)}</div>
+              <div class="inv-actions">
+                <button class="btn-ghost" type="button" data-act="edit" data-id="${escapeHtml(item.id)}">Edit</button>
+                <button class="btn-danger" type="button" data-act="del" data-id="${escapeHtml(item.id)}">Delete</button>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+      </div>
+    `;
+  }
+
+  function inventorySelectByScan(raw){
+    const code = String(raw || "").trim();
+    if(!code) return false;
+    const items = ensureInventoryItems();
+    const hit = items.find(i => String(i.scanCode || "").trim() === code);
+    if(!hit) return false;
+    setActivePage("inventory");
+    setInventoryForm(hit);
+    toast(`Loaded item ${hit.itemNumber || ""}`);
+    return true;
+  }
+
+  // ---------- Quote Mockup ----------
+  function quoteNumber(v, fallback = 0){
+    const n = Number(String(v ?? "").replace(/[^\d.-]/g, ""));
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function quoteMoney(n){
+    return "$" + Number(n || 0).toFixed(2);
+  }
+
+  function syncQuoteFromForm(){
+    quoteState.customer = String(quoteCustomerEl?.value || "").trim();
+    quoteState.date = String(quoteDateEl?.value || "");
+    quoteState.calibrationFeet = quoteNumber(quoteCalFeetEl?.value || 0, 10);
+    quoteState.colorMode = String(quoteColorModeEl?.value || "single");
+    quoteState.spacingIn = quoteNumber(quoteSpacingEl?.value || 12, 12);
+    quoteState.drawMode = String(quoteDrawModeEl?.value || "strand");
+    const price12 = quoteNumber(quotePricePerLight12El?.value);
+    const price15 = quoteNumber(quotePricePerLight15El?.value);
+    quoteState.pricePerLight = (quoteState.spacingIn === 15) ? price15 : price12;
+    quoteState.pricePerFoot = quoteNumber(quotePricePerFootEl?.value);
+    quoteState.liftFee = quoteNumber(quoteLiftFeeEl?.value);
+    quoteState.wreathPrices["36"] = quoteNumber(quoteWreath36PriceEl?.value);
+    quoteState.wreathPrices["48"] = quoteNumber(quoteWreath48PriceEl?.value);
+    quoteState.wreathPrices["60"] = quoteNumber(quoteWreath60PriceEl?.value);
+    quoteState.wreathPrices["72"] = quoteNumber(quoteWreath72PriceEl?.value);
+    quoteState.garlandPrices["4.5"] = quoteNumber(quoteGarland45PriceEl?.value);
+    quoteState.garlandPrices["9"] = quoteNumber(quoteGarland9PriceEl?.value);
+    quoteState.miniPrices.columns = quoteNumber(quoteMiniColumnsPriceEl?.value);
+    quoteState.miniPrices.shrubs  = quoteNumber(quoteMiniShrubsPriceEl?.value);
+    quoteState.miniPrices.trunk   = quoteNumber(quoteMiniTrunkPriceEl?.value);
+    quoteState.miniPrices.canopy  = quoteNumber(quoteMiniCanopyPriceEl?.value);
+    quoteState.miniPrices.branch  = quoteNumber(quoteMiniBranchPriceEl?.value);
+    quoteState.miniQty.columns = quoteNumber(quoteMiniColumnsQtyEl?.value);
+    quoteState.miniQty.shrubs  = quoteNumber(quoteMiniShrubsQtyEl?.value);
+    quoteState.miniQty.trunk   = quoteNumber(quoteMiniTrunkQtyEl?.value);
+    quoteState.miniQty.canopy  = quoteNumber(quoteMiniCanopyQtyEl?.value);
+    quoteState.miniQty.branch  = quoteNumber(quoteMiniBranchQtyEl?.value);
+    quoteState.notes = String(quoteNotesEl?.value || "").trim();
+  }
+
+  function quoteLineLengthPx(line){
+    const dx = (line.b.x - line.a.x);
+    const dy = (line.b.y - line.a.y);
+    return Math.hypot(dx, dy);
+  }
+
+  function quoteFeetFromPx(px){
+    if(!quoteDrawing.pxPerFoot) return 0;
+    return px / quoteDrawing.pxPerFoot;
+  }
+
+  function quoteRoofBulbCount(){
+    if(!quoteDrawing.pxPerFoot) return (quoteDrawing.roofSingles.length || 0);
+    const spacingFeet = Math.max(0.01, (quoteState.spacingIn || 12) / 12);
+    let count = 0;
+    quoteDrawing.roofSegments.forEach(s => {
+      const lenFeet = quoteFeetFromPx(quoteLineLengthPx(s));
+      count += Math.max(1, Math.floor(lenFeet / spacingFeet) + 1);
+    });
+    count += quoteDrawing.roofSingles.length || 0;
+    return count;
+  }
+
+  function quoteTotalFeet(type){
+    if(type === "roof"){
+      return quoteDrawing.roofSegments
+        .reduce((sum, s) => sum + quoteFeetFromPx(quoteLineLengthPx(s)), 0);
+    }
+    return 0;
+  }
+
+  let quoteFabric = null;
+  let quoteTempLine = null;
+  let quoteCurrentStrandId = 1;
+  let traceStart = null;
+  let quoteAssets = { wreath:null, garland:null, redBow:null, stripedBow:null };
+
+  const QUOTE_ASSET_URLS = {
+    wreath: "https://xtremepro.onrender.com/Tools/Render/wreath.png",
+    garland: "https://xtremepro.onrender.com/Tools/Render/garland.png",
+    redBow: "https://xtremepro.onrender.com/Tools/Render/red_bow.png",
+    stripedBow: "https://xtremepro.onrender.com/Tools/Render/bow-striped.png"
+  };
+
+  function initQuoteFabric(){
+    if(!quoteCanvasEl || quoteFabric) return;
+    quoteFabric = new fabric.Canvas(quoteCanvasEl, { selection: false, preserveObjectStacking: true });
+  }
+
+  function preloadQuoteAssets(){
+    if(!window.fabric) return;
+    fabric.Image.fromURL(QUOTE_ASSET_URLS.wreath, img => { quoteAssets.wreath = img; }, { crossOrigin:"Anonymous" });
+    fabric.Image.fromURL(QUOTE_ASSET_URLS.garland, img => { quoteAssets.garland = img; }, { crossOrigin:"Anonymous" });
+    fabric.Image.fromURL(QUOTE_ASSET_URLS.redBow, img => { quoteAssets.redBow = img; }, { crossOrigin:"Anonymous" });
+    fabric.Image.fromURL(QUOTE_ASSET_URLS.stripedBow, img => { quoteAssets.stripedBow = img; }, { crossOrigin:"Anonymous" });
+  }
+
+  function setQuoteBackground(dataUrl){
+    if(!quoteFabric || !dataUrl || !quoteStageEl) return;
+    fabric.Image.fromURL(dataUrl, img => {
+      const stageWidth = quoteStageEl.clientWidth || 900;
+      const scale = stageWidth / img.width;
+      const h = Math.round(img.height * scale);
+      quoteFabric.setWidth(stageWidth);
+      quoteFabric.setHeight(h);
+      img.set({ scaleX: scale, scaleY: scale, selectable:false, evented:false });
+      quoteFabric.setBackgroundImage(img, quoteFabric.renderAll.bind(quoteFabric));
+      quoteDrawing.imageLoaded = true;
+      if(quoteStageEmptyEl) quoteStageEmptyEl.style.display = "none";
+      if(quoteLegendEl) quoteLegendEl.textContent = "Photo loaded • Calibrate to start";
+      preloadQuoteAssets();
+    }, { crossOrigin:"Anonymous" });
+  }
+
+  function createBulbFabric(x, y, color, strandId, index){
+    const fill = getColorStyle(color) || "#facc15";
+    const c = String(fill).startsWith("linear-gradient") ? "#facc15" : fill;
+    const bulb = new fabric.Circle({
+      left: x, top: y, radius: 5, fill: c, stroke: "#1f2937", strokeWidth: 1,
+      originX: "center", originY: "center", selectable: false, evented: false
+    });
+    bulb.isBulb = true;
+    bulb.strandId = strandId;
+    bulb.bulbIndex = index;
+    return bulb;
+  }
+
+  function clearBulbs(){
+    if(!quoteFabric) return;
+    quoteFabric.getObjects().filter(o => o.isBulb).forEach(o => quoteFabric.remove(o));
+  }
+
+  function regenerateBulbs(){
+    if(!quoteFabric) return;
+    clearBulbs();
+    const spacingFeet = Math.max(0.01, (quoteState.spacingIn || 12) / 12);
+    const colors = (quoteState.selectedColors && quoteState.selectedColors.length)
+      ? quoteState.selectedColors : ["Warm White"];
+    const canMeasure = quoteDrawing.pxPerFoot > 0;
+    let bulbIndex = 0;
+    quoteDrawing.roofSegments.forEach(seg => {
+      if(!canMeasure) return;
+      const lenFeet = quoteFeetFromPx(quoteLineLengthPx(seg));
+      const count = Math.max(1, Math.floor(lenFeet / spacingFeet) + 1);
+      for(let i = 0; i < count; i++){
+        const t = count === 1 ? 0.5 : (i / (count - 1));
+        const x = seg.a.x + (seg.b.x - seg.a.x) * t;
+        const y = seg.a.y + (seg.b.y - seg.a.y) * t;
+        const color = colors[bulbIndex % colors.length];
+        quoteFabric.add(createBulbFabric(x, y, color, seg.id, bulbIndex));
+        bulbIndex++;
+      }
+    });
+    quoteDrawing.roofSingles.forEach(p => {
+      const color = colors[bulbIndex % colors.length];
+      quoteFabric.add(createBulbFabric(p.x, p.y, color, p.id || 0, bulbIndex));
+      bulbIndex++;
+    });
+    quoteFabric.renderAll();
+  }
+
+  function addDecorationImage(type, x, y, meta = {}){
+    if(!quoteFabric) return;
+    const base = quoteAssets[type];
+    if(!base) return;
+    base.clone(img => {
+      img.set({
+        left: x, top: y, originX:"center", originY:"center",
+        selectable: true, evented: true
+      });
+      img.scale(meta.scale || 0.3);
+      img.decorType = type;
+      img.decorMeta = meta;
+      quoteFabric.add(img);
+      quoteFabric.renderAll();
+    });
+  }
+
+  function setQuoteTool(tool){
+    quoteDrawing.tool = tool;
+    if(btnQuoteToolCalibrateEl) btnQuoteToolCalibrateEl.classList.toggle("is-active", tool === "calibrate");
+    if(btnQuoteToolRoofEl) btnQuoteToolRoofEl.classList.toggle("is-active", tool === "roof");
+    if(btnQuoteToolGarlandEl) btnQuoteToolGarlandEl.classList.toggle("is-active", tool === "garland");
+    if(btnQuoteToolWreathEl) btnQuoteToolWreathEl.classList.toggle("is-active", tool === "wreath");
+  }
+
+  function renderQuote(){
+    initQuoteFabric();
+    syncQuoteFromForm();
+    if(quoteState.colorMode === "single" && quoteState.selectedColors.length > 1){
+      quoteState.selectedColors = [quoteState.selectedColors[0]];
+    }
+    if(!quoteState.selectedColors.length) quoteState.selectedColors = ["Warm White"];
+    renderQuoteColorPalette();
+
+    const roofFeet = quoteTotalFeet("roof");
+    const totalLights = quoteRoofBulbCount();
+    const lightsCost = totalLights * quoteState.pricePerLight;
+    const wreathCounts = quoteDrawing.wreaths.reduce((acc, w) => {
+      acc[w.size] = (acc[w.size] || 0) + 1;
+      return acc;
+    }, {});
+    const garlandCounts = quoteDrawing.garlands.reduce((acc, g) => {
+      acc[g.length] = (acc[g.length] || 0) + 1;
+      return acc;
+    }, {});
+    const wreathCost =
+      (Number(wreathCounts["36"] || 0) * quoteState.wreathPrices["36"]) +
+      (Number(wreathCounts["48"] || 0) * quoteState.wreathPrices["48"]) +
+      (Number(wreathCounts["60"] || 0) * quoteState.wreathPrices["60"]) +
+      (Number(wreathCounts["72"] || 0) * quoteState.wreathPrices["72"]);
+    const garlandCost =
+      (Number(garlandCounts["4.5"] || 0) * quoteState.garlandPrices["4.5"]) +
+      (Number(garlandCounts["9"] || 0) * quoteState.garlandPrices["9"]);
+    const miniCost =
+      (quoteState.miniQty.columns * quoteState.miniPrices.columns) +
+      (quoteState.miniQty.shrubs * quoteState.miniPrices.shrubs) +
+      (quoteState.miniQty.trunk * quoteState.miniPrices.trunk) +
+      (quoteState.miniQty.canopy * quoteState.miniPrices.canopy) +
+      (quoteState.miniQty.branch * quoteState.miniPrices.branch);
+    const installSubtotal = (roofFeet * quoteState.pricePerFoot) + lightsCost + quoteState.liftFee;
+    const addOnSubtotal = wreathCost + garlandCost + miniCost;
+    const grandTotal = installSubtotal + addOnSubtotal;
+
+    if(quoteLightsTotalEl) quoteLightsTotalEl.textContent = String(totalLights);
+    if(quoteMaterialSubtotalEl) quoteMaterialSubtotalEl.textContent = quoteMoney(installSubtotal);
+    if(quoteLaborSubtotalEl) quoteLaborSubtotalEl.textContent = quoteMoney(addOnSubtotal);
+    if(quoteGrandTotalEl) quoteGrandTotalEl.textContent = quoteMoney(grandTotal);
+
+    if(quoteLegendEl){
+      const calText = quoteDrawing.pxPerFoot ? `${quoteDrawing.pxPerFoot.toFixed(1)} px/ft` : "Not calibrated";
+      const colors = (quoteState.selectedColors || []).join(", ") || "—";
+      quoteLegendEl.textContent = `${colors} • ${totalLights} bulbs • ${calText}`;
+    }
+
+    if(quoteLineItemsEl){
+      quoteLineItemsEl.innerHTML = `
+        <div class="rowline"><div>Roofline Feet</div><div>${roofFeet.toFixed(1)} ft</div></div>
+        <div class="rowline"><div>C9 Bulbs</div><div>${totalLights}</div></div>
+        <div class="rowline"><div>Wreaths 36"</div><div>${Number(wreathCounts["36"] || 0)}</div></div>
+        <div class="rowline"><div>Wreaths 48"</div><div>${Number(wreathCounts["48"] || 0)}</div></div>
+        <div class="rowline"><div>Wreaths 60"</div><div>${Number(wreathCounts["60"] || 0)}</div></div>
+        <div class="rowline"><div>Wreaths 72"</div><div>${Number(wreathCounts["72"] || 0)}</div></div>
+        <div class="rowline"><div>Garland 4.5'</div><div>${Number(garlandCounts["4.5"] || 0)}</div></div>
+        <div class="rowline"><div>Garland 9'</div><div>${Number(garlandCounts["9"] || 0)}</div></div>
+        <div class="rowline"><div>Mini Lights – Columns</div><div>${quoteState.miniQty.columns}</div></div>
+        <div class="rowline"><div>Mini Lights – Shrubs</div><div>${quoteState.miniQty.shrubs}</div></div>
+        <div class="rowline"><div>Mini Lights – Trunk</div><div>${quoteState.miniQty.trunk}</div></div>
+        <div class="rowline"><div>Mini Lights – Canopy</div><div>${quoteState.miniQty.canopy}</div></div>
+        <div class="rowline"><div>Mini Lights – Branch</div><div>${quoteState.miniQty.branch}</div></div>
+      `;
+    }
+
+    regenerateBulbs();
+  }
+
+  function renderQuoteColorPalette(){
+    if(!quoteColorPaletteEl) return;
+    const colors = Array.isArray(C9_COLORS) ? C9_COLORS : [];
+    const selected = Array.isArray(quoteState.selectedColors) ? quoteState.selectedColors : [];
+    quoteColorPaletteEl.innerHTML = colors.map(c => {
+      const isOn = selected.includes(c);
+      const style = getColorStyle(c);
+      const bg = style ? style : "#f3f4f6";
+      const textColor = isLightColor(String(style || "")) ? "#111827" : "#ffffff";
+      return `
+        <button type="button" class="btn-ghost" data-color="${escapeHtml(c)}"
+          style="min-height:34px; padding:6px 8px; border-radius:10px; background:${bg}; color:${textColor}; border:${isOn ? "2px solid #111827" : "1px solid #e5e7eb"};">
+          ${escapeHtml(c)}
+        </button>
+      `;
+    }).join("");
+
+    if(quotePatternPreviewEl){
+      quotePatternPreviewEl.textContent = selected.length ? selected.join(" → ") : "—";
+    }
+  }
+
+  function resetQuote(){
+    if(quoteCustomerEl) quoteCustomerEl.value = "";
+    if(quoteDateEl) quoteDateEl.value = todayISO();
+    if(quoteCalFeetEl) quoteCalFeetEl.value = "10";
+    if(quotePricePerLight12El) quotePricePerLight12El.value = "";
+    if(quotePricePerLight15El) quotePricePerLight15El.value = "";
+    if(quotePricePerFootEl) quotePricePerFootEl.value = "";
+    if(quoteLiftFeeEl) quoteLiftFeeEl.value = "";
+    if(quoteWreath36PriceEl) quoteWreath36PriceEl.value = "";
+    if(quoteWreath48PriceEl) quoteWreath48PriceEl.value = "";
+    if(quoteWreath60PriceEl) quoteWreath60PriceEl.value = "";
+    if(quoteWreath72PriceEl) quoteWreath72PriceEl.value = "";
+    if(quoteGarland45PriceEl) quoteGarland45PriceEl.value = "";
+    if(quoteGarland9PriceEl) quoteGarland9PriceEl.value = "";
+    if(quoteMiniColumnsPriceEl) quoteMiniColumnsPriceEl.value = "";
+    if(quoteMiniColumnsQtyEl) quoteMiniColumnsQtyEl.value = "";
+    if(quoteMiniShrubsPriceEl) quoteMiniShrubsPriceEl.value = "";
+    if(quoteMiniShrubsQtyEl) quoteMiniShrubsQtyEl.value = "";
+    if(quoteMiniTrunkPriceEl) quoteMiniTrunkPriceEl.value = "";
+    if(quoteMiniTrunkQtyEl) quoteMiniTrunkQtyEl.value = "";
+    if(quoteMiniCanopyPriceEl) quoteMiniCanopyPriceEl.value = "";
+    if(quoteMiniCanopyQtyEl) quoteMiniCanopyQtyEl.value = "";
+    if(quoteMiniBranchPriceEl) quoteMiniBranchPriceEl.value = "";
+    if(quoteMiniBranchQtyEl) quoteMiniBranchQtyEl.value = "";
+    if(quoteColorModeEl) quoteColorModeEl.value = "single";
+    if(quoteSpacingEl) quoteSpacingEl.value = "12";
+    if(quoteDrawModeEl) quoteDrawModeEl.value = "strand";
+    if(quoteNotesEl) quoteNotesEl.value = "";
+    quoteDrawing.calibrateLine = null;
+    quoteDrawing.calibrationLineObj = null;
+    quoteDrawing.pxPerFoot = 0;
+    quoteDrawing.roofSegments = [];
+    quoteDrawing.roofSingles = [];
+    quoteDrawing.garlands = [];
+    quoteDrawing.wreaths = [];
+    quoteState.selectedColors = ["Warm White"];
+    setQuoteTool("calibrate");
+    renderQuote();
+  }
+
+  function printQuote(){
+    renderQuote();
+    const totalLights = quoteLightsTotalEl ? quoteLightsTotalEl.textContent : "0";
+    const materialSubtotal = quoteMaterialSubtotalEl ? quoteMaterialSubtotalEl.textContent : "$0";
+    const laborSubtotal = quoteLaborSubtotalEl ? quoteLaborSubtotalEl.textContent : "$0";
+    const grandTotal = quoteGrandTotalEl ? quoteGrandTotalEl.textContent : "$0";
+    const mockupImg = quoteFabric ? quoteFabric.toDataURL({ format: "png", quality: 0.9 }) : "";
+    const logoSrc = (document.querySelector(".brand-logo") && document.querySelector(".brand-logo").src) ? document.querySelector(".brand-logo").src : "";
+    const wreathCounts = quoteDrawing.wreaths.reduce((acc, w) => {
+      acc[w.size] = (acc[w.size] || 0) + 1;
+      return acc;
+    }, {});
+    const garlandCounts = quoteDrawing.garlands.reduce((acc, g) => {
+      acc[g.length] = (acc[g.length] || 0) + 1;
+      return acc;
+    }, {});
+    const roofFeet = quoteTotalFeet("roof");
+    const bulbCount = quoteRoofBulbCount();
+    const lineItems = [
+      { label: "C9 Install (per ft)", qty: roofFeet.toFixed(1), unit: "ft", price: quoteState.pricePerFoot, total: roofFeet * quoteState.pricePerFoot },
+      { label: "C9 Install (per bulb)", qty: bulbCount, unit: "bulb", price: quoteState.pricePerLight, total: bulbCount * quoteState.pricePerLight },
+      { label: "Lift Fee", qty: 1, unit: "ea", price: quoteState.liftFee, total: quoteState.liftFee },
+      { label: "Wreath 36\"", qty: Number(wreathCounts["36"] || 0), unit: "ea", price: quoteState.wreathPrices["36"], total: Number(wreathCounts["36"] || 0) * quoteState.wreathPrices["36"] },
+      { label: "Wreath 48\"", qty: Number(wreathCounts["48"] || 0), unit: "ea", price: quoteState.wreathPrices["48"], total: Number(wreathCounts["48"] || 0) * quoteState.wreathPrices["48"] },
+      { label: "Wreath 60\"", qty: Number(wreathCounts["60"] || 0), unit: "ea", price: quoteState.wreathPrices["60"], total: Number(wreathCounts["60"] || 0) * quoteState.wreathPrices["60"] },
+      { label: "Wreath 72\"", qty: Number(wreathCounts["72"] || 0), unit: "ea", price: quoteState.wreathPrices["72"], total: Number(wreathCounts["72"] || 0) * quoteState.wreathPrices["72"] },
+      { label: "Garland 4.5'", qty: Number(garlandCounts["4.5"] || 0), unit: "ea", price: quoteState.garlandPrices["4.5"], total: Number(garlandCounts["4.5"] || 0) * quoteState.garlandPrices["4.5"] },
+      { label: "Garland 9'", qty: Number(garlandCounts["9"] || 0), unit: "ea", price: quoteState.garlandPrices["9"], total: Number(garlandCounts["9"] || 0) * quoteState.garlandPrices["9"] },
+      { label: "Mini – Columns", qty: quoteState.miniQty.columns, unit: "strand", price: quoteState.miniPrices.columns, total: quoteState.miniQty.columns * quoteState.miniPrices.columns },
+      { label: "Mini – Shrubs", qty: quoteState.miniQty.shrubs, unit: "strand", price: quoteState.miniPrices.shrubs, total: quoteState.miniQty.shrubs * quoteState.miniPrices.shrubs },
+      { label: "Mini – Trunk", qty: quoteState.miniQty.trunk, unit: "strand", price: quoteState.miniPrices.trunk, total: quoteState.miniQty.trunk * quoteState.miniPrices.trunk },
+      { label: "Mini – Canopy", qty: quoteState.miniQty.canopy, unit: "strand", price: quoteState.miniPrices.canopy, total: quoteState.miniQty.canopy * quoteState.miniPrices.canopy },
+      { label: "Mini – Branch", qty: quoteState.miniQty.branch, unit: "strand", price: quoteState.miniPrices.branch, total: quoteState.miniQty.branch * quoteState.miniPrices.branch }
+    ].filter(x => Number(x.qty || 0) > 0 || Number(x.total || 0) > 0);
+    const html = `
+      <div style="display:flex; align-items:center; gap:12px;">
+        ${logoSrc ? `<img src="${logoSrc}" alt="Logo" style="height:42px;"/>` : ""}
+        <h1 style="margin:0;">Christmas Light Quote</h1>
+      </div>
+      <div class="meta">Customer: ${escapeHtml(quoteState.customer || "—")} • Date: ${escapeHtml(quoteState.date || todayISO())}</div>
+      ${mockupImg ? `<div style="border:1px solid #ddd; padding:10px; border-radius:12px;"><img src="${mockupImg}" style="width:100%; height:auto;" /></div>` : ""}
+      <div style="margin-top:12px;">
+        <div><b>Roofline Length:</b> ${quoteTotalFeet("roof").toFixed(1)} ft</div>
+        <div><b>Total Lights:</b> ${totalLights}</div>
+        <div><b>Colors:</b> ${escapeHtml((quoteState.selectedColors || []).join(", ") || "—")}</div>
+      </div>
+      <div style="margin-top:12px;">
+        <div><b>Garland 4.5':</b> ${Number(garlandCounts["4.5"] || 0)}</div>
+        <div><b>Garland 9':</b> ${Number(garlandCounts["9"] || 0)}</div>
+        <div><b>Wreaths 36":</b> ${Number(wreathCounts["36"] || 0)}</div>
+        <div><b>Wreaths 48":</b> ${Number(wreathCounts["48"] || 0)}</div>
+        <div><b>Wreaths 60":</b> ${Number(wreathCounts["60"] || 0)}</div>
+        <div><b>Wreaths 72":</b> ${Number(wreathCounts["72"] || 0)}</div>
+        <div><b>Mini Lights – Columns:</b> ${quoteState.miniQty.columns}</div>
+        <div><b>Mini Lights – Shrubs:</b> ${quoteState.miniQty.shrubs}</div>
+        <div><b>Mini Lights – Trunk:</b> ${quoteState.miniQty.trunk}</div>
+        <div><b>Mini Lights – Canopy:</b> ${quoteState.miniQty.canopy}</div>
+        <div><b>Mini Lights – Branch:</b> ${quoteState.miniQty.branch}</div>
+      </div>
+      <div style="margin-top:12px;">
+        <div><b>Material Subtotal:</b> ${materialSubtotal}</div>
+        <div><b>Labor Subtotal:</b> ${laborSubtotal}</div>
+        <div><b>Grand Total:</b> ${grandTotal}</div>
+      </div>
+      <div style="margin-top:14px;">
+        <h2 style="margin:0 0 8px; font-size:16px;">Line Items</h2>
+        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+          <thead>
+            <tr>
+              <th style="text-align:left; border-bottom:1px solid #ddd; padding:6px;">Item</th>
+              <th style="text-align:right; border-bottom:1px solid #ddd; padding:6px;">Qty</th>
+              <th style="text-align:right; border-bottom:1px solid #ddd; padding:6px;">Unit Price</th>
+              <th style="text-align:right; border-bottom:1px solid #ddd; padding:6px;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lineItems.map(li => `
+              <tr>
+                <td style="border-bottom:1px solid #eee; padding:6px;">${escapeHtml(li.label)}</td>
+                <td style="border-bottom:1px solid #eee; padding:6px; text-align:right;">${escapeHtml(String(li.qty))} ${escapeHtml(li.unit)}</td>
+                <td style="border-bottom:1px solid #eee; padding:6px; text-align:right;">${quoteMoney(li.price)}</td>
+                <td style="border-bottom:1px solid #eee; padding:6px; text-align:right;">${quoteMoney(li.total)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+      ${quoteState.notes ? `<div style="margin-top:12px;"><b>Notes:</b> ${escapeHtml(quoteState.notes)}</div>` : ""}
+    `;
+    openPrintWindow("Christmas Light Quote", html);
   }
 
   function titleCaseNameFinal(str){
@@ -3241,14 +5288,138 @@ function closePhotoModal(){
       .map(b => `${b.size}-${b.code}`)
       .join("; ");
   }
+
+  // ---------- Season Helpers ----------
+  function getSeasonOptions(){
+    const set = new Set();
+    set.add(Number(seasonYear));
+    set.add(2025);
+    if(state?.current?.season) set.add(Number(state.current.season));
+    if(state?.ui?.activeSeason) set.add(Number(state.ui.activeSeason));
+    (state.records || []).forEach(r => {
+      const n = Number(r?.season || 0);
+      if(n) set.add(n);
+    });
+    return Array.from(set).filter(Boolean).sort((a,b) => b - a);
+  }
+
+  function renderSeasonSelector(){
+    if(!seasonSelectEl) return;
+    const options = getSeasonOptions();
+    const active = getActiveSeason();
+    seasonSelectEl.innerHTML = options
+      .map(y => `<option value="${y}">${y}</option>`)
+      .join("");
+    seasonSelectEl.value = String(active);
+  }
+
+  function findRecordByNameAndSeason(name, season){
+    const key = String(name || "").trim().toLowerCase();
+    if(!key) return -1;
+    const targetSeason = Number(season || 0);
+    return state.records.findIndex(r =>
+      Number(r.season || 0) === targetSeason &&
+      String(r.customerName || "").trim().toLowerCase() === key
+    );
+  }
+
+  function findLatestRecordByName(name){
+    const key = String(name || "").trim().toLowerCase();
+    if(!key) return null;
+    const matches = (state.records || []).filter(r =>
+      String(r.customerName || "").trim().toLowerCase() === key
+    );
+    if(!matches.length) return null;
+    matches.sort((a,b) => {
+      const ta = Date.parse(a.savedAt || "") || 0;
+      const tb = Date.parse(b.savedAt || "") || 0;
+      if(ta !== tb) return tb - ta;
+      return Number(b.season || 0) - Number(a.season || 0);
+    });
+    return matches[0];
+  }
+
+  function cloneCustomerForSeason(name, targetSeason){
+    const idx = findRecordByNameAndSeason(name, targetSeason);
+    if(idx >= 0){
+      loadRecordToCurrent(idx);
+      return { action: "loaded" };
+    }
+
+    const latest = findLatestRecordByName(name);
+    if(!latest) return { action: "none" };
+
+    pushUndo();
+    const clone = deepClone(latest);
+    ensureCustomerFields(clone);
+    clone.season = Number(targetSeason || seasonYear);
+    clone.bins = [];
+    clone.savedAt = "";
+    state.current = clone;
+    if(!state.current.counts) state.current.counts = {};
+    if(!Array.isArray(state.current.bins)) state.current.bins = [];
+    currentHasUnsavedChanges = true;
+    save({ currentDirty: true });
+    syncFormFromState();
+    renderAll();
+    toast(`Copied ${clone.customerName || "customer"} to season ${clone.season} (BINs cleared)`);
+    return { action: "cloned" };
+  }
+
+  function renderSeasonMismatch(){
+    if(!seasonMismatchEl) return;
+    const active = getActiveSeason();
+    const current = Number(state.current?.season || 0) || active;
+    if(active && current && active !== current){
+      seasonMismatchEl.textContent = `Active season: ${active} \u00b7 Customer season: ${current}`;
+      seasonMismatchEl.style.display = "block";
+    }else{
+      seasonMismatchEl.textContent = "";
+      seasonMismatchEl.style.display = "none";
+    }
+  }
+
+  function setActiveSeason(nextSeason, opts = {}){
+    const target = normalizeSeasonValue(nextSeason);
+    if(!state.ui || typeof state.ui !== "object") state.ui = { screenKeyboard: !IS_IOS, page: "customer", activeSeason: target };
+    state.ui.activeSeason = target;
+    save();
+    renderSeasonSelector();
+    renderSeasonStats();
+    renderRecords();
+    renderSeasonMismatch();
+
+    const syncCurrent = (opts.syncCurrent !== false);
+    const name = String(state.current?.customerName || "").trim();
+    if(syncCurrent && name){
+      const res = cloneCustomerForSeason(name, target);
+      if(res.action === "none"){
+        pushUndo();
+        state.current.season = target;
+        if(seasonViewEl) seasonViewEl.value = String(target);
+        if(seasonJobEl) seasonJobEl.value = String(target);
+        save({ currentDirty: true });
+        updateStatus();
+        renderSeasonMismatch();
+      }
+    }else if(syncCurrent){
+      state.current.season = target;
+      if(seasonViewEl) seasonViewEl.value = String(target);
+      if(seasonJobEl) seasonJobEl.value = String(target);
+      updateStatus();
+      renderSeasonMismatch();
+    }
+  }
+
   // ---------- Season Totals (by item) ----------
   function getSeasonTotals(){
-    // Sum across SAVED records for the current season
+    const activeSeason = getActiveSeason();
+    // Sum across SAVED records for the active season
     const totals = {};
     ITEMS.forEach(it => totals[it.id] = 0);
 
     (state.records || [])
-      .filter(r => Number(r.season || seasonYear) === Number(seasonYear))
+      .filter(r => Number(r.season || seasonYear) === Number(activeSeason))
       .forEach(rec => {
         ITEMS.forEach(item => {
           const obj = rec.counts?.[item.id] || {};
@@ -3262,6 +5433,8 @@ function closePhotoModal(){
 
   function renderSeasonStats(){
     if(!seasonStatsEl) return;
+    const activeSeason = getActiveSeason();
+    if(seasonStatsNoteEl) seasonStatsNoteEl.textContent = `Auto-sums all saved customers for season ${activeSeason}.`;
 
     const totals = getSeasonTotals();
 
@@ -3283,9 +5456,11 @@ function closePhotoModal(){
   }
   function updateStatus(){
     if(statusNameEl) statusNameEl.textContent = state.current.customerName?.trim() || "—";
+    if(statusSeasonEl) statusSeasonEl.textContent = String(state.current.season || seasonYear || "—");
     if(statusBinsEl) statusBinsEl.textContent = state.current.bins?.length ? binsToString(state.current.bins) : "—";
     if(statusTimerEl) statusTimerEl.textContent = state.current.timerSetting || "—";
     if(statusRemovalEl) statusRemovalEl.textContent = state.current.removalDate || "—";
+    renderSeasonMismatch();
   }
 
   function normalizeBin(v){
@@ -3741,7 +5916,7 @@ if(keypadState.mode === "BIN"){
     clearTimeout(_recordAutosaveTimer);
     pushUndo();
 state.current = {
-  season: seasonYear,
+  season: getActiveSeason(),
   customerName: "",
   company: "",
   phone: "",
@@ -3818,15 +5993,19 @@ state.current = {
     recordsListEl.innerHTML = "";
     if(!state.records.length){
       if(customersModalSummaryEl) customersModalSummaryEl.textContent = "0 customer records";
+      if(customersModalTitleEl) customersModalTitleEl.textContent = "Customers Saved This Season";
       recordsListEl.innerHTML = `<div class="muted">No saved customers yet.</div>`;
       return;
     }
 
+    const activeSeason = getActiveSeason();
     const q = String(customersSearchTerm || "").trim().toLowerCase();
+    const seasonRecords = state.records.filter(r => Number(r.season || 0) === Number(activeSeason));
     const filtered = state.records
       .map((r, i) => ({ r, i }))
       .filter(({ r }) => {
         ensureCustomerFields(r);
+        if(Number(r.season || 0) !== Number(activeSeason)) return false;
         if(!q) return true;
         const hay = [
           r.customerName || "",
@@ -3840,10 +6019,15 @@ state.current = {
       });
 
     if(customersModalSummaryEl){
-      customersModalSummaryEl.textContent = `${filtered.length} shown of ${state.records.length} saved`;
+      customersModalSummaryEl.textContent = `${filtered.length} shown of ${seasonRecords.length} saved for ${activeSeason}`;
+    }
+    if(customersModalTitleEl){
+      customersModalTitleEl.textContent = `Customers Saved This Season (${activeSeason})`;
     }
     if(!filtered.length){
-      recordsListEl.innerHTML = `<div class="muted">No customers match your search.</div>`;
+      recordsListEl.innerHTML = seasonRecords.length
+        ? `<div class="muted">No customers match your search.</div>`
+        : `<div class="muted">No customers saved for season ${activeSeason}.</div>`;
       return;
     }
 
@@ -4029,8 +6213,11 @@ const base = [
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement("a");
+    const seasonTag = String(state.current?.season || state.ui?.activeSeason || seasonYear);
+    const now = new Date();
+    const dateTag = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
     a.href = url;
-    a.download = `customer-inventory_${seasonYear}.csv`;
+    a.download = `Customer Inventory ${seasonTag} ${dateTag}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -4043,6 +6230,297 @@ const base = [
     const s = String(v ?? "");
     if(/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
     return s;
+  }
+
+  // ---------- Inventory Report ----------
+  function exportInventoryReport(){
+    const items = ensureInventoryItems();
+    if(!items.length){
+      toast("No inventory items to report");
+      return;
+    }
+
+    const rows = [];
+    rows.push([
+      "Item #",
+      "QTY",
+      "Color",
+      "Suppliers",
+      "Category",
+      "Reorder QTY",
+      "Shelf #",
+      "Location Bin",
+      "Unit Cost",
+      "Scannable",
+      "Scan Code",
+      "Reorder Needed",
+      "Last Updated"
+    ]);
+
+    const sorted = inventorySort(items);
+    sorted.forEach(item => {
+      rows.push([
+        item.itemNumber || "",
+        Number(item.qty || 0),
+        item.color || "",
+        item.suppliers || "",
+        item.category || "",
+        Number(item.reorderQty || 0),
+        item.shelf || "",
+        item.locationBin || "",
+        Number(item.unitCost || 0),
+        item.scannable ? "Yes" : "No",
+        item.scanCode || "",
+        inventoryIsReorderNeeded(item) ? "Yes" : "No",
+        item.updatedAt || ""
+      ]);
+    });
+
+    const csv = rows.map(r => r.map(csvEscape).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const dateTag = new Date().toISOString().slice(0,10);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `warehouse-inventory_${dateTag}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    toast("Inventory report generated");
+  }
+
+  function normalizeHeader(h){
+    return String(h || "").trim().toLowerCase();
+  }
+
+  function parseYesNo(v){
+    const s = String(v || "").trim().toLowerCase();
+    return s === "yes" || s === "true" || s === "1";
+  }
+
+  function importInventoryCSV(file){
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const raw = String(reader.result || "").replace(/^\uFEFF/, "");
+        const rows = parseCsvRows(raw);
+        if(rows.length < 2){
+          toast("CSV appears empty");
+          return;
+        }
+
+        const headers = rows[0].map(normalizeHeader);
+        const cleanCell = (v) => String(v ?? "").trim().replace(/^'+/,"").trim();
+        const get = (row, name) => {
+          const idx = headers.indexOf(normalizeHeader(name));
+          return idx >= 0 ? row[idx] : "";
+        };
+        const getFirst = (row, names) => {
+          for(const name of names){
+            const val = get(row, name);
+            if(String(val ?? "").trim() !== "") return val;
+          }
+          return "";
+        };
+
+        const items = ensureInventoryItems();
+        let added = 0;
+        let updated = 0;
+        const now = new Date().toISOString();
+
+        for(let i = 1; i < rows.length; i++){
+          const r = rows[i];
+          if(!r || !r.length) continue;
+          const product = cleanCell(getFirst(r, ["Product", "Item", "Item Name", "Description"]));
+          const productCode = cleanCell(getFirst(r, ["Product Code", "Item #", "Item Number", "Item No", "SKU", "Sku"]));
+          const partNumber = cleanCell(getFirst(r, ["Part Number", "Part #", "Part No"]));
+          const barcode = cleanCell(getFirst(r, ["Barcode", "UPC", "EAN", "Scan Code", "Scannable Code"]));
+
+          const itemNumber = String(productCode || partNumber || barcode || product || "").trim();
+          if(!itemNumber) continue;
+
+          const supplier = cleanCell(getFirst(r, ["Supplier", "Suppliers", "Vendor"]));
+          const brand = cleanCell(getFirst(r, ["Brand", "Manufacturer"]));
+          const suppliers = [supplier, brand].filter(Boolean).join(" / ");
+
+          const caseCost = invNumber(getFirst(r, ["Case Cost", "Cost"]));
+          const unitsPerCase = invNumber(getFirst(r, ["Units Per Case", "Units/Case", "Units per Case"]));
+          const retailPrice = invNumber(getFirst(r, ["Retail Price", "Unit Cost", "Price"]));
+          let unitCost = 0;
+          if(caseCost > 0 && unitsPerCase > 0) unitCost = caseCost / unitsPerCase;
+          else if(caseCost > 0) unitCost = caseCost;
+          else unitCost = retailPrice;
+
+          const incoming = {
+            itemNumber,
+            qty: invNumber(getFirst(r, ["QTY", "Qty on Hand", "Quantity", "On Hand", "Stock"])),
+            color: cleanCell(getFirst(r, ["Color", "Colour"])),
+            suppliers,
+            category: cleanCell(getFirst(r, ["Category", "Type"])),
+            reorderQty: invNumber(getFirst(r, ["Reorder QTY", "Re-order Pt", "Reorder Pt", "Reorder Point"])),
+            shelf: cleanCell(getFirst(r, ["Shelf #", "Shelf"])),
+            locationBin: cleanCell(getFirst(r, ["Location Bin", "Bin", "Location"])),
+            unitCost,
+            scannable: !!(barcode || productCode || partNumber) || parseYesNo(getFirst(r, ["Scannable"])),
+            scanCode: String(barcode || productCode || partNumber || "").trim(),
+            updatedAt: now
+          };
+
+          const key = itemNumber.toLowerCase();
+          const idx = items.findIndex(it => String(it.itemNumber || "").toLowerCase() === key);
+          if(idx >= 0){
+            items[idx] = { ...items[idx], ...incoming };
+            updated++;
+          }else{
+            items.unshift({ id: uid(), createdAt: now, ...incoming });
+            added++;
+          }
+        }
+
+        save({ currentDirty: false, skipRecordAutosave: true });
+        renderInventory();
+        toast(`Inventory import complete: ${added} added, ${updated} updated`);
+      }catch(e){
+        toast("Inventory import failed");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function buildInventoryReportTable(rows){
+    return `
+      <table style="width:100%; border-collapse:collapse; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; font-size:12px;">
+        <thead>
+          <tr>
+            ${rows.headers.map(h => `<th style="text-align:left; border-bottom:1px solid #ddd; padding:6px 6px;">${escapeHtml(h)}</th>`).join("")}
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.items.map(r => `
+            <tr>
+              ${r.map(c => `<td style="border-bottom:1px solid #eee; padding:6px 6px;">${escapeHtml(String(c ?? ""))}</td>`).join("")}
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function openPrintWindow(title, bodyHtml){
+    const w = window.open("", "_blank");
+    if(!w) return;
+    w.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <title>${escapeHtml(title)}</title>
+          <meta charset="UTF-8" />
+          <style>
+            @page { margin: 0.5in; }
+            body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; color:#111; }
+            h1 { font-size: 18px; margin: 0 0 10px; }
+            .meta { color:#6b7280; font-size:12px; margin-bottom:12px; }
+          </style>
+        </head>
+        <body>
+          ${bodyHtml}
+        </body>
+      </html>
+    `);
+    w.document.close();
+    w.focus();
+    w.print();
+  }
+
+  function printInventoryReport(){
+    const items = inventorySort(ensureInventoryItems());
+    if(!items.length){
+      toast("No inventory items to print");
+      return;
+    }
+    const rows = {
+      headers: ["Item #","QTY","Color","Suppliers","Category","Reorder QTY","Shelf #","Location Bin","Unit Cost","Scannable","Scan Code","Updated"],
+      items: items.map(i => [
+        i.itemNumber || "",
+        Number(i.qty || 0),
+        i.color || "",
+        i.suppliers || "",
+        i.category || "",
+        Number(i.reorderQty || 0),
+        i.shelf || "",
+        i.locationBin || "",
+        (Number(i.unitCost || 0) ? `$${Number(i.unitCost || 0).toFixed(2)}` : ""),
+        i.scannable ? "Yes" : "No",
+        i.scanCode || "",
+        i.updatedAt || ""
+      ])
+    };
+    const html = `
+      <h1>Warehouse Inventory Report</h1>
+      <div class="meta">Generated: ${escapeHtml(new Date().toLocaleString())}</div>
+      ${buildInventoryReportTable(rows)}
+    `;
+    openPrintWindow("Warehouse Inventory Report", html);
+  }
+
+  function printReorderList(){
+    const items = inventorySort(ensureInventoryItems()).filter(inventoryIsReorderNeeded);
+    if(!items.length){
+      toast("No reorder items");
+      return;
+    }
+    const rows = {
+      headers: ["Item #","QTY","Reorder QTY","Suppliers","Shelf #","Location Bin"],
+      items: items.map(i => [
+        i.itemNumber || "",
+        Number(i.qty || 0),
+        Number(i.reorderQty || 0),
+        i.suppliers || "",
+        i.shelf || "",
+        i.locationBin || ""
+      ])
+    };
+    const html = `
+      <h1>Reorder List</h1>
+      <div class="meta">Generated: ${escapeHtml(new Date().toLocaleString())}</div>
+      ${buildInventoryReportTable(rows)}
+    `;
+    openPrintWindow("Reorder List", html);
+  }
+
+  function printInventoryLabel(){
+    const items = ensureInventoryItems();
+    const item = inventorySelectedId ? items.find(i => i.id === inventorySelectedId) : null;
+    if(!item){
+      toast("Select an inventory item first");
+      return;
+    }
+    const code = String(item.scanCode || "").trim() || String(item.itemNumber || "").trim();
+    if(!code){
+      toast("No scan code or item # to label");
+      return;
+    }
+    const qrSrc = qrUrlFromText(code, 220);
+    const html = `
+      <h1>Inventory Label</h1>
+      <div class="meta">Item: ${escapeHtml(item.itemNumber || "")}</div>
+      <div style="display:flex; gap:20px; align-items:center;">
+        <img src="${qrSrc}" alt="Inventory QR" style="width:2.2in; height:2.2in; border:1px solid #ddd;" />
+        <div>
+          <div><b>Item #:</b> ${escapeHtml(item.itemNumber || "")}</div>
+          <div><b>Color:</b> ${escapeHtml(item.color || "—")}</div>
+          <div><b>Category:</b> ${escapeHtml(item.category || "—")}</div>
+          <div><b>Shelf:</b> ${escapeHtml(item.shelf || "—")}</div>
+          <div><b>Location Bin:</b> ${escapeHtml(item.locationBin || "—")}</div>
+          <div><b>Scan Code:</b> ${escapeHtml(code)}</div>
+        </div>
+      </div>
+    `;
+    openPrintWindow("Inventory Label", html);
   }
 
   // ---------- CSV Import ----------
@@ -4155,6 +6633,7 @@ const base = [
         save();
         renderRecords();
         renderSeasonStats();
+        renderSeasonSelector();
         toast(`Imported ${imported.length} customer(s)`);
       }catch(e){
         console.error(e);
@@ -4263,16 +6742,18 @@ const base = [
   }
 
   // ---------- Form Sync ----------
-  function syncFormFromState(){
+function syncFormFromState(){
   ensureCustomerFields(state.current);
   customerNameEl.value = state.current.customerName || "";
   if(customerCompanyEl) customerCompanyEl.value = state.current.company || "";
   if(customerPhoneEl) customerPhoneEl.value = state.current.phone || "";
   if(customerAddressEl) customerAddressEl.value = state.current.address || "";
+  if(seasonViewEl) seasonViewEl.value = String(state.current.season || seasonYear || "");
   if(customerNameJobEl) customerNameJobEl.value = state.current.customerName || "";
   if(customerCompanyJobEl) customerCompanyJobEl.value = state.current.company || "";
   if(customerPhoneJobEl) customerPhoneJobEl.value = state.current.phone || "";
   if(customerAddressJobEl) customerAddressJobEl.value = state.current.address || "";
+  if(seasonJobEl) seasonJobEl.value = String(state.current.season || seasonYear || "");
   removalDateEl.value = state.current.removalDate || todayISO();
   if(removalDateJobEl) removalDateJobEl.value = state.current.removalDate || todayISO();
   timerSettingEl.value = state.current.timerSetting || "";
@@ -4592,6 +7073,90 @@ function kbShow(target){
     document.body.classList.remove("modal-open");
   }
   function bindForm(){
+  // Auth / access UI
+  if(btnSignInEl) btnSignInEl.addEventListener("click", openAuthModal);
+  if(btnSignOutEl) btnSignOutEl.addEventListener("click", () => {
+    clearAuthState();
+    toast("Signed out");
+  });
+  if(btnUserAccessEl) btnUserAccessEl.addEventListener("click", openAccessModal);
+  if(btnAuthCloseEl) btnAuthCloseEl.addEventListener("click", closeAuthModal);
+  if(btnAuthCancelEl) btnAuthCancelEl.addEventListener("click", closeAuthModal);
+  if(authModalBackdropEl){
+    authModalBackdropEl.addEventListener("click", (e) => {
+      if(e.target === authModalBackdropEl) closeAuthModal();
+    });
+  }
+  if(authInviteToggleEl){
+    authInviteToggleEl.addEventListener("change", () => {
+      if(authInviteFieldsEl) authInviteFieldsEl.style.display = authInviteToggleEl.checked ? "block" : "none";
+    });
+  }
+  if(btnAuthSubmitEl){
+    btnAuthSubmitEl.addEventListener("click", async () => {
+      if(!authUsernameEl) return;
+      const username = String(authUsernameEl.value || "").trim();
+      const useInvite = !!(authInviteToggleEl && authInviteToggleEl.checked);
+      if(!username){
+        if(authStatusEl) authStatusEl.textContent = "Username is required.";
+        return;
+      }
+      const payload = { username };
+      if(useInvite){
+        const inviteCode = String(authInviteCodeEl?.value || "").trim();
+        const newPassword = String(authNewPasswordEl?.value || "").trim();
+        if(!inviteCode || !newPassword){
+          if(authStatusEl) authStatusEl.textContent = "Invite code and new password are required.";
+          return;
+        }
+        payload.inviteCode = inviteCode;
+        payload.newPassword = newPassword;
+      }else{
+        const password = String(authPasswordEl?.value || "").trim();
+        if(!password){
+          if(authStatusEl) authStatusEl.textContent = "Password is required.";
+          return;
+        }
+        payload.password = password;
+      }
+
+      if(authStatusEl) authStatusEl.textContent = "Signing in…";
+      try{
+        const data = await authLogin(payload);
+        setAuthState(data || {});
+        closeAuthModal();
+        toast("Signed in");
+        initAutoSync();
+      }catch(err){
+        if(authStatusEl) authStatusEl.textContent = `Error: ${err.message || "Sign in failed"}`;
+      }
+    });
+  }
+  if(btnAccessCloseEl) btnAccessCloseEl.addEventListener("click", closeAccessModal);
+  if(accessModalBackdropEl){
+    accessModalBackdropEl.addEventListener("click", (e) => {
+      if(e.target === accessModalBackdropEl) closeAccessModal();
+    });
+  }
+  if(btnCreateInviteEl){
+    btnCreateInviteEl.addEventListener("click", async () => {
+      const username = String(inviteUsernameEl?.value || "").trim();
+      const role = String(inviteRoleEl?.value || "viewer");
+      if(!username){
+        if(accessStatusEl) accessStatusEl.textContent = "Username is required.";
+        return;
+      }
+      try{
+        if(accessStatusEl) accessStatusEl.textContent = "Creating invite…";
+        await updateAccess({ action:"createInvite", username, role });
+        if(inviteUsernameEl) inviteUsernameEl.value = "";
+        toast("Invite created");
+        loadAccessList();
+      }catch(err){
+        if(accessStatusEl) accessStatusEl.textContent = `Error: ${err.message || "Invite failed"}`;
+      }
+    });
+  }
   // BIN size buttons inside keypad modal
   if(btnBinSizeSmallEl){
     btnBinSizeSmallEl.addEventListener("click", () => {
@@ -4643,7 +7208,18 @@ function kbShow(target){
     else setHeaderMenuOpen(true);
   }
 
-  [btnUndoEl, btnRedoEl, btnNewCustomerEl, btnSaveCustomerEl, btnCustomersEl, btnScanBinEl, btnExportEl, btnImportEl, btnPrintEl]
+  // Page tabs
+  if(tabCustomerEl) tabCustomerEl.addEventListener("click", () => setActivePage("customer"));
+  if(tabInventoryEl) tabInventoryEl.addEventListener("click", () => {
+    setActivePage("inventory");
+    renderInventory();
+  });
+  if(tabQuoteEl) tabQuoteEl.addEventListener("click", () => {
+    setActivePage("quote");
+    renderQuote();
+  });
+
+  [btnUndoEl, btnRedoEl, btnNewCustomerEl, btnSaveCustomerEl, btnCustomersEl, btnScanBinEl, btnExportEl, btnImportEl, btnPrintEl, btnInvNewEl, btnInvScanLookupEl, btnInvReportEl, btnInvImportEl, btnInvPrintReportEl, btnInvPrintReorderEl, btnInvPrintLabelEl, btnQuotePrintEl, btnQuoteResetEl]
     .filter(Boolean)
     .forEach(el => el.addEventListener("click", () => closeHeaderMenuIfPhone()));
 // Photos
@@ -4718,6 +7294,276 @@ if(photoModalEl){
     if(e.target === photoModalEl) closePhotoModal();
   });
 }
+
+// Inventory bindings
+if(btnInvAddEl) btnInvAddEl.addEventListener("click", addOrUpdateInventoryItem);
+if(btnInvClearEl) btnInvClearEl.addEventListener("click", clearInventoryForm);
+if(btnInvNewEl) btnInvNewEl.addEventListener("click", () => {
+  clearInventoryForm();
+  if(invItemNumberEl) invItemNumberEl.focus();
+});
+if(btnInvScanCodeEl) btnInvScanCodeEl.addEventListener("click", () => {
+  setActivePage("inventory");
+  openBinScanner("inventory_assign");
+});
+if(btnInvScanLookupEl) btnInvScanLookupEl.addEventListener("click", () => {
+  setActivePage("inventory");
+  openBinScanner("inventory_lookup");
+});
+if(btnInvScanLookupInlineEl) btnInvScanLookupInlineEl.addEventListener("click", () => {
+  setActivePage("inventory");
+  openBinScanner("inventory_lookup");
+});
+if(btnInvReportEl) btnInvReportEl.addEventListener("click", exportInventoryReport);
+if(btnInvReportInlineEl) btnInvReportInlineEl.addEventListener("click", exportInventoryReport);
+if(btnInvPrintReportEl) btnInvPrintReportEl.addEventListener("click", printInventoryReport);
+if(btnInvPrintReorderEl) btnInvPrintReorderEl.addEventListener("click", printReorderList);
+if(btnInvPrintReorderInlineEl) btnInvPrintReorderInlineEl.addEventListener("click", printReorderList);
+if(btnInvPrintLabelEl) btnInvPrintLabelEl.addEventListener("click", printInventoryLabel);
+if(btnInvPrintLabelInlineEl) btnInvPrintLabelInlineEl.addEventListener("click", printInventoryLabel);
+
+if(btnInvImportEl && invImportInputEl){
+  btnInvImportEl.addEventListener("click", () => invImportInputEl.click());
+  invImportInputEl.addEventListener("change", () => {
+    importInventoryCSV(invImportInputEl.files && invImportInputEl.files[0]);
+    invImportInputEl.value = "";
+  });
+}
+
+if(invSearchEl){
+  invSearchEl.addEventListener("input", () => {
+    inventorySearchTerm = invSearchEl.value || "";
+    renderInventory();
+  });
+}
+if(invFilterEl){
+  invFilterEl.value = inventoryFilterMode;
+  invFilterEl.addEventListener("change", () => {
+    inventoryFilterMode = invFilterEl.value || "all";
+    renderInventory();
+  });
+}
+if(invSortEl){
+  invSortEl.value = inventorySortMode;
+  invSortEl.addEventListener("change", () => {
+    inventorySortMode = invSortEl.value || "item_asc";
+    renderInventory();
+  });
+}
+if(invTableWrapEl){
+  invTableWrapEl.addEventListener("click", (e) => {
+    const edit = e.target.closest('[data-act="edit"]');
+    if(edit){
+      const id = edit.getAttribute("data-id");
+      const item = ensureInventoryItems().find(i => i.id === id);
+      if(item) setInventoryForm(item);
+      return;
+    }
+    const del = e.target.closest('[data-act="del"]');
+    if(del){
+      deleteInventoryItem(del.getAttribute("data-id"));
+      return;
+    }
+    const row = e.target.closest(".inv-row");
+    if(row && row.getAttribute("data-id")){
+      const id = row.getAttribute("data-id");
+      const item = ensureInventoryItems().find(i => i.id === id);
+      if(item) setInventoryForm(item);
+    }
+  });
+}
+
+// Quote bindings
+const quoteInputs = [
+  quoteCustomerEl, quoteDateEl, quoteCalFeetEl, quoteColorModeEl, quoteSpacingEl, quoteDrawModeEl,
+  quotePricePerLight12El, quotePricePerLight15El, quotePricePerFootEl, quoteLiftFeeEl,
+  quoteWreath36PriceEl, quoteWreath48PriceEl, quoteWreath60PriceEl, quoteWreath72PriceEl,
+  quoteGarland45PriceEl, quoteGarland9PriceEl,
+  quoteMiniColumnsPriceEl, quoteMiniColumnsQtyEl,
+  quoteMiniShrubsPriceEl, quoteMiniShrubsQtyEl,
+  quoteMiniTrunkPriceEl, quoteMiniTrunkQtyEl,
+  quoteMiniCanopyPriceEl, quoteMiniCanopyQtyEl,
+  quoteMiniBranchPriceEl, quoteMiniBranchQtyEl,
+  quoteNotesEl
+].filter(Boolean);
+
+quoteInputs.forEach(el => {
+  const ev = (el.tagName === "SELECT" || el.tagName === "TEXTAREA" || el.type === "date") ? "change" : "input";
+  el.addEventListener(ev, renderQuote);
+  if(ev !== "input") el.addEventListener("input", renderQuote);
+});
+
+if(btnQuotePrintEl) btnQuotePrintEl.addEventListener("click", printQuote);
+if(btnQuoteResetEl) btnQuoteResetEl.addEventListener("click", resetQuote);
+
+if(quoteColorPaletteEl){
+  quoteColorPaletteEl.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-color]");
+    if(!btn) return;
+    const color = btn.getAttribute("data-color");
+    if(!color) return;
+
+    if(quoteState.colorMode === "single"){
+      quoteState.selectedColors = [color];
+    }else{
+      const idx = quoteState.selectedColors.indexOf(color);
+      if(idx >= 0) quoteState.selectedColors.splice(idx, 1);
+      else quoteState.selectedColors.push(color);
+      if(!quoteState.selectedColors.length) quoteState.selectedColors = [color];
+    }
+    renderQuote();
+  });
+}
+
+if(quoteColorModeEl){
+  quoteColorModeEl.addEventListener("change", () => {
+    quoteState.colorMode = quoteColorModeEl.value || "single";
+    if(quoteState.colorMode === "single"){
+      quoteState.selectedColors = quoteState.selectedColors.length ? [quoteState.selectedColors[0]] : ["Warm White"];
+    }
+    renderQuote();
+  });
+}
+
+if(quotePhotoInputEl){
+  quotePhotoInputEl.addEventListener("change", () => {
+    const file = quotePhotoInputEl.files && quotePhotoInputEl.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      initQuoteFabric();
+      setQuoteBackground(String(reader.result || ""));
+      renderQuote();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+if(btnQuoteToolCalibrateEl) btnQuoteToolCalibrateEl.addEventListener("click", () => setQuoteTool("calibrate"));
+if(btnQuoteToolRoofEl) btnQuoteToolRoofEl.addEventListener("click", () => setQuoteTool("roof"));
+if(btnQuoteToolGarlandEl) btnQuoteToolGarlandEl.addEventListener("click", () => setQuoteTool("garland"));
+if(btnQuoteToolWreathEl) btnQuoteToolWreathEl.addEventListener("click", () => setQuoteTool("wreath"));
+if(btnQuoteClearEl) btnQuoteClearEl.addEventListener("click", () => {
+  quoteDrawing.calibrateLine = null;
+  quoteDrawing.calibrationLineObj = null;
+  quoteDrawing.pxPerFoot = 0;
+  quoteDrawing.roofSegments = [];
+  quoteDrawing.roofSingles = [];
+  quoteDrawing.garlands = [];
+  quoteDrawing.wreaths = [];
+  if(quoteFabric){
+    quoteFabric.getObjects().forEach(obj => {
+      if(obj && !obj.isBackground) quoteFabric.remove(obj);
+    });
+    if(quoteFabric.backgroundImage) quoteFabric.sendToBack(quoteFabric.backgroundImage);
+  }
+  renderQuote();
+});
+
+let quoteDragStart = null;
+if(quoteCanvasEl){
+  initQuoteFabric();
+  quoteFabric.on("mouse:down", (opt) => {
+    if(!quoteDrawing.imageLoaded) return;
+    const p = quoteFabric.getPointer(opt.e);
+    const x = p.x, y = p.y;
+
+    if(quoteDrawing.tool === "wreath"){
+      const size = String(quoteWreathSizeEl?.value || "36");
+      quoteDrawing.wreaths.push({ x, y, size });
+      addDecorationImage("wreath", x, y, { scale: 0.35, size });
+      renderQuote();
+      return;
+    }
+
+    if(quoteDrawing.tool === "garland"){
+      const length = String(quoteGarlandSizeEl?.value || "4.5");
+      quoteDrawing.garlands.push({ x, y, length });
+      addDecorationImage("garland", x, y, { scale: length === "9" ? 0.55 : 0.4, length });
+      renderQuote();
+      return;
+    }
+
+    if(quoteDrawing.tool === "roof" && quoteState.drawMode === "single"){
+      quoteDrawing.roofSingles.push({ x, y, id: quoteCurrentStrandId++ });
+      renderQuote();
+      return;
+    }
+
+    if(quoteDrawing.tool === "roof" && quoteState.drawMode === "trace"){
+      if(!traceStart){
+        traceStart = { x, y };
+        return;
+      }
+      const line = { a: traceStart, b: { x, y }, id: quoteCurrentStrandId++ };
+      quoteDrawing.roofSegments.push(line);
+      traceStart = null;
+      renderQuote();
+      return;
+    }
+
+    quoteDragStart = { x, y };
+    if(quoteTempLine){
+      quoteFabric.remove(quoteTempLine);
+      quoteTempLine = null;
+    }
+  });
+
+  quoteFabric.on("mouse:move", (opt) => {
+    if(!quoteDragStart || !quoteDrawing.imageLoaded) return;
+    if(quoteDrawing.tool === "roof" && quoteState.drawMode !== "strand") return;
+    const p = quoteFabric.getPointer(opt.e);
+    const line = [quoteDragStart.x, quoteDragStart.y, p.x, p.y];
+    if(!quoteTempLine){
+      quoteTempLine = new fabric.Line(line, { stroke:"#0f172a", strokeWidth:2, selectable:false, evented:false, strokeDashArray:[6,4] });
+      quoteFabric.add(quoteTempLine);
+    }else{
+      quoteTempLine.set({ x2: p.x, y2: p.y });
+    }
+    quoteFabric.renderAll();
+  });
+
+  quoteFabric.on("mouse:up", (opt) => {
+    if(!quoteDragStart || !quoteDrawing.imageLoaded) return;
+    if(quoteTempLine){ quoteFabric.remove(quoteTempLine); quoteTempLine = null; }
+    const p = quoteFabric.getPointer(opt.e);
+    const line = { a: quoteDragStart, b: { x: p.x, y: p.y }, id: quoteCurrentStrandId++ };
+
+    if(quoteDrawing.tool === "calibrate"){
+      quoteDrawing.calibrateLine = line;
+      const len = quoteLineLengthPx(line);
+      const feet = quoteState.calibrationFeet || 10;
+      quoteDrawing.pxPerFoot = feet > 0 ? (len / feet) : 0;
+      if(quoteDrawing.calibrationLineObj && quoteFabric){
+        quoteFabric.remove(quoteDrawing.calibrationLineObj);
+      }
+      if(quoteFabric){
+        const calLine = new fabric.Line([line.a.x, line.a.y, line.b.x, line.b.y], {
+          stroke: "#ef4444",
+          strokeWidth: 2,
+          selectable: false,
+          evented: false,
+          strokeDashArray: [6,4]
+        });
+        calLine.isCalibration = true;
+        quoteDrawing.calibrationLineObj = calLine;
+        quoteFabric.add(calLine);
+        if(quoteFabric.backgroundImage) quoteFabric.sendToBack(quoteFabric.backgroundImage);
+      }
+      renderQuote();
+    }else if(quoteDrawing.tool === "roof" && quoteState.drawMode === "strand"){
+      quoteDrawing.roofSegments.push(line);
+      renderQuote();
+    }
+    quoteDragStart = null;
+  });
+}
+
+window.addEventListener("resize", () => {
+  if(quoteFabric && quoteDrawing.imageLoaded){
+    regenerateBulbs();
+  }
+});
     const onNameBlur = (el) => {
       const fixed = titleCaseNameFinal(el.value);
       if(fixed !== el.value){
@@ -4821,6 +7667,30 @@ if(photoModalEl){
       });
     }
 
+    if(seasonJobEl){
+      const sanitizeSeasonInput = () => {
+        const digits = String(seasonJobEl.value || "").replace(/\D/g, "").slice(0,4);
+        if(digits !== seasonJobEl.value) seasonJobEl.value = digits;
+        return digits;
+      };
+      const applySeason = () => {
+        const digits = sanitizeSeasonInput();
+        const next = digits ? Number(digits) : seasonYear;
+        pushUndo();
+        state.current.season = next;
+        seasonJobEl.value = String(next);
+        if(seasonViewEl) seasonViewEl.value = String(next);
+        save({ currentDirty: true });
+        updateStatus();
+        renderSeasonMismatch();
+        renderSeasonSelector();
+        renderOpenCustomerQr();
+      };
+      seasonJobEl.addEventListener("input", sanitizeSeasonInput);
+      seasonJobEl.addEventListener("change", applySeason);
+      seasonJobEl.addEventListener("blur", applySeason);
+    }
+
     if(timerSettingJobEl){
       timerSettingJobEl.addEventListener("change", () => {
         pushUndo();
@@ -4897,6 +7767,13 @@ if(photoModalEl){
         state.ui.screenKeyboard = !!kbToggleEl.checked;
         save();
         applyKeyboardPref();
+      });
+    }
+
+    if(seasonSelectEl){
+      seasonSelectEl.addEventListener("change", () => {
+        const next = Number(seasonSelectEl.value || 0);
+        setActiveSeason(next, { syncCurrent: true });
       });
     }
 
@@ -5311,10 +8188,12 @@ return;
     });
   }
 
+  const SCAN_FORMATS = ["qr_code", "code_128", "code_39", "ean_13", "ean_8", "upc_a", "upc_e", "itf"];
+
   async function ensureQrDecoderReady(){
     if(scanDetector || jsQrReady) return true;
     if("BarcodeDetector" in window){
-      scanDetector = new window.BarcodeDetector({ formats: ["qr_code"] });
+      scanDetector = new window.BarcodeDetector({ formats: SCAN_FORMATS });
       return true;
     }
 
@@ -5374,8 +8253,10 @@ return;
 
   function findBinOwnerRecord(bin){
     if(!bin || !bin.code) return null;
+    const curSeason = Number(state.current?.season || 0);
     for(const rec of (state.records || [])){
       if(isCurrentCustomerMatch(rec)) continue;
+      if(curSeason && Number(rec.season || 0) !== curSeason) continue;
       const bins = (rec.bins || []).map(normalizeBinEntry).filter(Boolean);
       const hit = bins.some(b => b.code === bin.code);
       if(hit) return rec;
@@ -5424,6 +8305,23 @@ return;
         }
 
         if(rawValue){
+          if(scanMode === "inventory_assign"){
+            stopBinScanner();
+            if(invScanCodeEl) invScanCodeEl.value = rawValue.trim();
+            if(invScannableEl) invScannableEl.checked = true;
+            toast("Scan code set");
+            return;
+          }
+          if(scanMode === "inventory_lookup"){
+            if(inventorySelectByScan(rawValue)){
+              stopBinScanner();
+              return;
+            }
+            if(scanHintEl) scanHintEl.textContent = "No inventory item found for this code.";
+            scanRaf = requestAnimationFrame(scanLoop);
+            return;
+          }
+
           const parsed = parseScanResultToBin(rawValue);
           if(!parsed || !parsed.bin){
             if(scanHintEl) scanHintEl.textContent = "QR scanned, but no BIN found in it.";
@@ -5449,7 +8347,9 @@ return;
 
   async function openBinScanner(mode = "open_customer"){
     if(!scanModalBackdropEl || !scanVideoEl || !scanHintEl) return;
-    scanMode = (mode === "add_bin") ? "add_bin" : "open_customer";
+    scanMode = (mode === "add_bin" || mode === "inventory_assign" || mode === "inventory_lookup")
+      ? mode
+      : "open_customer";
 
     if(!("mediaDevices" in navigator) || !navigator.mediaDevices.getUserMedia){
       toast("Camera not supported on this device");
@@ -5478,7 +8378,11 @@ return;
 
       scanHintEl.textContent = (scanMode === "add_bin")
         ? "Scanning… hold steady on the BIN QR to add it."
-        : "Scanning… hold steady on the BIN QR.";
+        : (scanMode === "inventory_assign")
+          ? "Scanning… hold steady on the code to assign it."
+          : (scanMode === "inventory_lookup")
+            ? "Scanning… hold steady on the code to find the item."
+            : "Scanning… hold steady on the BIN QR.";
       scanRaf = requestAnimationFrame(scanLoop);
     }catch(err){
       stopBinScanner();
@@ -5490,61 +8394,122 @@ return;
   const btnPrintEl = $("btnPrint");
   const printCardEl = document.getElementById("printCard");
 
-  function renderPrintCard(){
-    const name = (state.current.customerName || "").trim() || "—";
-    const bins = state.current.bins?.length ? binsToString(state.current.bins) : "—";
-    const items = buildItemsInventoriedLines();
-    const pr = getCustomerPriceRange();
+  function buildPrintCardHtml(opts = {}){
+    const bins = (state.current.bins || []).map(normalizeBinEntry).filter(Boolean);
+    const first = bins[0];
+    const binLabel = first
+      ? `${first.size ? `${first.size}-` : ""}${first.code}`
+      : "—";
+    const logoSrc = (document.querySelector(".brand-logo") && document.querySelector(".brand-logo").src)
+      ? document.querySelector(".brand-logo").src
+      : "";
 
-    const qrPayload = buildQrPayload();
-    const qrSrc = qrUrlFromText(qrPayload, 220);
+    const qrPayload = first
+      ? buildCustomerOpenUrl(first, state.current.season || seasonYear)
+      : "";
+    const qrSrc = opts.qrSrcOverride || (qrPayload ? qrUrlFromText(qrPayload, 280) : "");
 
-    const itemsHtml = items.length
-      ? `<ul>${items.map(x => `
-          <li>
-            <b>${escapeHtml(x.title)}:</b>
-            ${escapeHtml(x.detail)}
-          </li>
-        `).join("")}</ul>`
-      : `<div class="pc-line">— No items inventoried.</div>`;
+    return `
+      <div class="pc-rotator">
+        <div class="pc-wrap">
+          <div class="pc-logo">
+            ${logoSrc ? `<img src="${logoSrc}" alt="Logo" style="height: 0.7in;" />` : `<div style="font-weight:900; font-size:18pt;">Xtreme Lighting</div>`}
+          </div>
 
-    printCardEl.innerHTML = `
-      <div class="pc-title">Xtreme Lighting – Inventory</div>
+          <div class="pc-bin-label">BIN #</div>
+          <div class="pc-bin-value">${escapeHtml(binLabel)}</div>
 
-      <div class="pc-line"><b>Client:</b> ${escapeHtml(name)}</div>
-      <div class="pc-line"><b>BINs:</b> ${escapeHtml(bins)}</div>
-      <div class="pc-line"><b>Est Price (C9+Minis+Garland):</b> ${escapeHtml(fmtMoney(pr.min))}–${escapeHtml(fmtMoney(pr.max))}</div>
-      ${state.current.notes?.trim()
-        ? `<div class="pc-line"><b>Notes:</b> ${escapeHtml(state.current.notes)}</div>`
-        : ""
-      }
-
-      <div class="pc-section">
-        <div class="pc-line"><b>Items inventoried:</b></div>
-        ${itemsHtml}
-      </div>
-
-      <div style="margin-top: 8pt; display:flex; justify-content:center;">
-        <img
-          src="${qrSrc}"
-          alt="Inventory QR Code"
-          style="width: 1.35in; height: 1.35in;"
-        />
-      </div>
-
-      <div class="pc-line" style="font-size:9pt; text-align:center; margin-top:4pt;">
-        Scan to view inventory
+          <div class="pc-qr-label">BIN # QR Code</div>
+          <div class="pc-qr">
+            ${qrSrc
+              ? `<img src="${qrSrc}" alt="BIN QR Code" style="width: 2.2in; height: 2.2in;" />`
+              : `<div style="font-size:10pt;">No BIN selected</div>`
+            }
+          </div>
+        </div>
       </div>
     `;
   }
 
-  function print3x5(){
-    renderPrintCard();
-    window.print();
+  function renderPrintCard(){
+    printCardEl.innerHTML = buildPrintCardHtml();
+  }
+
+  let print4x6InFlight = false;
+
+  async function qrDataUrlFromText(text, size = 280){
+    try{
+      await loadScriptOnce("https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js");
+      if(window.QRCode && window.QRCode.toDataURL){
+        return await window.QRCode.toDataURL(text, { width: size, margin: 1 });
+      }
+    }catch(e){}
+    return "";
+  }
+
+  async function print4x6(){
+    if(print4x6InFlight) return;
+    print4x6InFlight = true;
+
+    const bins = (state.current.bins || []).map(normalizeBinEntry).filter(Boolean);
+    const first = bins[0];
+    const qrPayload = first
+      ? buildCustomerOpenUrl(first, state.current.season || seasonYear)
+      : "";
+    let qrSrcOverride = "";
+    if(qrPayload){
+      try{
+        qrSrcOverride = await qrDataUrlFromText(qrPayload, 280);
+        if(!qrSrcOverride) qrSrcOverride = qrUrlFromText(qrPayload, 280);
+      }catch(e){
+        // Fallback to direct URL if fetch fails
+        qrSrcOverride = qrUrlFromText(qrPayload, 280);
+      }
+    }
+
+    if(printCardEl){
+      printCardEl.innerHTML = buildPrintCardHtml({ qrSrcOverride });
+    }
+
+    const waitForImages = () => {
+      const imgs = printCardEl ? Array.from(printCardEl.querySelectorAll("img")) : [];
+      return Promise.all(imgs.map(img => {
+        if(img.complete) return Promise.resolve();
+        return new Promise(resolve => {
+          img.addEventListener("load", resolve, { once: true });
+          img.addEventListener("error", resolve, { once: true });
+        });
+      }));
+    };
+
+    const doPrint = () => {
+      // Force a reflow so Safari sees the element before printing
+      if(printCardEl) void printCardEl.offsetHeight;
+
+      setTimeout(() => {
+        document.body.classList.add("print-rotate");
+        const cleanup = () => {
+          document.body.classList.remove("print-rotate");
+          window.removeEventListener("afterprint", cleanup);
+        };
+        window.addEventListener("afterprint", cleanup);
+        window.print();
+        setTimeout(() => { print4x6InFlight = false; }, 300);
+      }, 400);
+    };
+
+    // Let the DOM paint, then wait for images
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        waitForImages()
+          .then(() => setTimeout(doPrint, 50))
+          .catch(() => setTimeout(doPrint, 50));
+      });
+    });
   }
 
   if(btnPrintEl){
-    btnPrintEl.addEventListener("click", () => print3x5());
+    btnPrintEl.addEventListener("click", () => print4x6());
   }
 
   // ---------- Render ----------
@@ -5561,6 +8526,7 @@ return;
 
     if(remoteSyncStatusEl && !remoteEnabled()) setRemoteStatus("OFF");
 
+    renderSeasonSelector();
     applyKeyboardPref();
     renderSaveCue();
 
@@ -5574,12 +8540,20 @@ return;
     renderOpenCustomerQr();
     renderPriceBox();
     renderSeasonStats();
+    renderInventory();
+    renderQuote();
     updateUndoButton();
   }
 
   // ---------- Init ----------
   async function init(){
     load();
+    loadAuthFromStorage();
+    if(authIsExpired()){
+      clearAuthState();
+    }else{
+      updateAuthUI();
+    }
 
     // iOS uses native input
     if(USE_NATIVE_INPUT) document.body.classList.add("native-input");
@@ -5598,6 +8572,14 @@ return;
 
     // Initial render
     renderAll();
+    setActivePage(state.ui && state.ui.page ? state.ui.page : "customer", { save: false });
+  if(quoteDateEl && !quoteDateEl.value) quoteDateEl.value = todayISO();
+  if(quoteCalFeetEl && !quoteCalFeetEl.value) quoteCalFeetEl.value = "10";
+  if(quoteColorModeEl && !quoteColorModeEl.value) quoteColorModeEl.value = "single";
+  if(quoteSpacingEl && !quoteSpacingEl.value) quoteSpacingEl.value = "12";
+  if(quoteDrawModeEl && !quoteDrawModeEl.value) quoteDrawModeEl.value = "strand";
+  setQuoteTool("calibrate");
+  renderQuote();
     tryLoadCustomerFromUrlBin();
     await initAutoSync();
     tryLoadCustomerFromUrlBin();
