@@ -119,12 +119,11 @@ button:active{
 .modal{
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,.85);
+  background:rgba(0,0,0,.9);
   display:none;
   align-items:center;
   justify-content:center;
   z-index:1000;
-  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 .modal.show{
@@ -135,12 +134,14 @@ button:active{
   background:#000;
   color:#fff;
   border-radius:16px;
-  width:95%;
+  width:100%;
+  height:100%;
   max-width:500px;
-  overflow:hidden;
   max-height:90vh;
+  overflow:hidden;
   display:flex;
   flex-direction:column;
+  margin:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 .modal header{
@@ -149,43 +150,14 @@ button:active{
   font-size:18px;
   font-weight:600;
   position:static;
+  flex-shrink:0;
 }
 
-.video-container{
-  position:relative;
-  width:100%;
+#reader{
   flex:1;
+  position:relative;
   background:#000;
-  display:flex;
-  align-items:center;
-  justify-content:center;
   overflow:hidden;
-  min-height:300px;
-}
-
-video{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  background:#000;
-}
-
-.scan-overlay{
-  position:absolute;
-  inset:0;
-  pointer-events:none;
-}
-
-.scan-frame{
-  position:absolute;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
-  width:250px;
-  height:250px;
-  border:3px solid #fff;
-  border-radius:16px;
-  box-shadow:0 0 0 9999px rgba(0,0,0,.5);
 }
 
 .modal footer{
@@ -193,6 +165,7 @@ video{
   background:#1a1a1a;
   display:flex;
   gap:12px;
+  flex-shrink:0;
 }
 
 .modal footer button{
@@ -203,11 +176,6 @@ video{
 @media(max-width:375px){
   h1{
     font-size:18px;
-  }
-  
-  .scan-frame{
-    width:200px;
-    height:200px;
   }
 }
 </style>
@@ -234,25 +202,19 @@ video{
 <div class="modal" id="camModal">
   <div class="box">
     <header>Scanning QR Code</header>
-    <div class="video-container">
-      <video id="cam" playsinline muted autoplay></video>
-      <div class="scan-overlay">
-        <div class="scan-frame"></div>
-      </div>
-    </div>
+    <div id="reader"></div>
     <footer>
       <button id="closeCam">Cancel</button>
     </footer>
   </div>
 </div>
 
-<script src="https://unpkg.com/@zxing/library@latest"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 
 let scanMode='job';
-let activeStream=null;
-let codeReader=null;
+let html5QrcodeScanner = null;
 
 function toast(msg){
   const el = $('scanMsg');
@@ -274,7 +236,7 @@ $('camModal').onclick=(e)=>{
   }
 };
 
-async function openScanner(mode){
+function openScanner(mode){
   scanMode=mode;
 
   if(location.protocol!=='https:' && location.hostname!=='localhost'){
@@ -285,81 +247,57 @@ async function openScanner(mode){
   $('camModal').classList.add('show');
 
   try{
-    // Request camera with constraints for iPhone
-    const constraints = {
-      video: {
-        facingMode: 'environment'
-      },
-      audio: false
+    html5QrcodeScanner = new Html5Qrcode("reader");
+    
+    const config = {
+      fps: 10,
+      qrbox: { width: 250, height: 250 },
+      aspectRatio: 1.0
     };
 
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    activeStream = stream;
-
-    const video = $('cam');
-    video.srcObject = stream;
-
-    // Wait for video to be ready
-    await new Promise((resolve) => {
-      video.onloadedmetadata = () => {
-        video.play().then(resolve).catch(e => {
-          console.error('Play error:', e);
-          resolve();
-        });
-      };
-    });
-
-    // Initialize ZXing reader
-    if(!codeReader){
-      codeReader = new ZXing.BrowserQRCodeReader();
-    }
-
-    // Start decoding
-    codeReader.decodeFromVideoDevice(
-      null, // Use default camera
-      'cam',
-      (result, error) => {
-        if (result) {
-          handleDecoded(result.text);
-        }
-        if (error && error.name !== 'NotFoundException') {
-          console.error('Decode error:', error);
-        }
+    html5QrcodeScanner.start(
+      { facingMode: "environment" },
+      config,
+      (decodedText, decodedResult) => {
+        handleDecoded(decodedText);
+      },
+      (errorMessage) => {
+        // Ignore scanning errors (they happen continuously while scanning)
       }
-    );
+    ).catch(err => {
+      console.error("Start error:", err);
+      stopScanner();
+      
+      if(err.toString().includes('NotAllowedError')){
+        alert("Camera access denied. Please enable camera permissions in Settings.");
+      } else if(err.toString().includes('NotFoundError')){
+        alert("No camera found on this device.");
+      } else {
+        alert("Camera error. Please try again.");
+      }
+    });
 
   } catch(e) {
     console.error("Scanner error:", e);
     stopScanner();
-    
-    if(e.name === 'NotAllowedError'){
-      alert("Camera access denied. Please enable camera permissions in Settings > Safari > Camera.");
-    } else if(e.name === 'NotFoundError'){
-      alert("No camera found on this device.");
-    } else {
-      alert("Camera error: " + e.message);
-    }
+    alert("Failed to open scanner: " + e.message);
   }
 }
 
 function stopScanner(){
-  $('camModal').classList.remove('show');
-
-  if(codeReader){
-    try{
-      codeReader.reset();
-    }catch(e){
-      console.log('Reader reset error:',e);
-    }
+  if(html5QrcodeScanner){
+    html5QrcodeScanner.stop().then(() => {
+      html5QrcodeScanner.clear();
+      html5QrcodeScanner = null;
+      $('camModal').classList.remove('show');
+    }).catch(err => {
+      console.error("Stop error:", err);
+      html5QrcodeScanner = null;
+      $('camModal').classList.remove('show');
+    });
+  } else {
+    $('camModal').classList.remove('show');
   }
-
-  if(activeStream){
-    activeStream.getTracks().forEach(t=>t.stop());
-    activeStream=null;
-  }
-
-  const video=$('cam');
-  video.srcObject=null;
 }
 
 function handleDecoded(text){
@@ -383,18 +321,6 @@ function handleDecoded(text){
 document.addEventListener('dblclick', (e) => {
   e.preventDefault();
 }, { passive: false });
-
-// Handle orientation changes
-window.addEventListener('orientationchange', () => {
-  if(activeStream){
-    setTimeout(()=>{
-      const video=$('cam');
-      if(video.srcObject){
-        video.play();
-      }
-    },100);
-  }
-});
 </script>
 
 </body>
