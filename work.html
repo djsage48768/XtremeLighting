@@ -160,6 +160,7 @@ button:active{
   align-items:center;
   justify-content:center;
   overflow:hidden;
+  min-height:300px;
 }
 
 video{
@@ -245,14 +246,13 @@ video{
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js"></script>
+<script src="https://unpkg.com/@zxing/library@latest"></script>
 <script>
 const $ = id => document.getElementById(id);
 
 let scanMode='job';
 let activeStream=null;
-let zxingReader=null;
-let zxingControls=null;
+let codeReader=null;
 
 function toast(msg){
   const el = $('scanMsg');
@@ -261,17 +261,6 @@ function toast(msg){
   setTimeout(()=> {
     el.classList.remove('show');
   },3000);
-}
-
-function loadZXing(){
-  return new Promise((resolve,reject)=>{
-    if(window.ZXing){ resolve(); return; }
-    const s=document.createElement('script');
-    s.src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js";
-    s.onload=resolve;
-    s.onerror=reject;
-    document.body.appendChild(s);
-  });
 }
 
 $('jobCamBtn').onclick=()=>openScanner('job');
@@ -296,71 +285,72 @@ async function openScanner(mode){
   $('camModal').classList.add('show');
 
   try{
-    // Request camera with ideal constraints for iPhone
-    const stream=await navigator.mediaDevices.getUserMedia({
-      video:{
-        facingMode:{ideal:'environment'},
-        width:{ideal:1920},
-        height:{ideal:1080}
+    // Request camera with constraints for iPhone
+    const constraints = {
+      video: {
+        facingMode: 'environment'
       },
-      audio:false
+      audio: false
+    };
+
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    activeStream = stream;
+
+    const video = $('cam');
+    video.srcObject = stream;
+
+    // Wait for video to be ready
+    await new Promise((resolve) => {
+      video.onloadedmetadata = () => {
+        video.play().then(resolve).catch(e => {
+          console.error('Play error:', e);
+          resolve();
+        });
+      };
     });
 
-    activeStream=stream;
-
-    const video=$('cam');
-    video.srcObject=stream;
-    video.muted=true;
-    video.playsInline=true;
-    video.setAttribute('playsinline','');
-    video.setAttribute('webkit-playsinline','');
-
-    // Ensure video plays on iOS
-    await video.play().catch(e=>{
-      console.log('Autoplay attempted, awaiting user gesture');
-    });
-
-  }catch(e){
-    console.error("Camera permission error:",e);
-    stopScanner();
-    alert("Camera access denied. Please enable camera permissions in Settings.");
-    return;
-  }
-
-  try{
-
-    await loadZXing();
-
-    if(!zxingReader){
-      zxingReader=new ZXing.BrowserMultiFormatReader();
+    // Initialize ZXing reader
+    if(!codeReader){
+      codeReader = new ZXing.BrowserQRCodeReader();
     }
 
-    zxingControls=await zxingReader.decodeFromVideoElement(
-      $('cam'),
-      (result,err)=>{
-        if(result){
-          handleDecoded(result.getText());
+    // Start decoding
+    codeReader.decodeFromVideoDevice(
+      null, // Use default camera
+      'cam',
+      (result, error) => {
+        if (result) {
+          handleDecoded(result.text);
+        }
+        if (error && error.name !== 'NotFoundException') {
+          console.error('Decode error:', error);
         }
       }
     );
 
-  }catch(e){
-    console.error("ZXing init error:",e);
+  } catch(e) {
+    console.error("Scanner error:", e);
     stopScanner();
-    alert("Scanner failed to initialize.");
+    
+    if(e.name === 'NotAllowedError'){
+      alert("Camera access denied. Please enable camera permissions in Settings > Safari > Camera.");
+    } else if(e.name === 'NotFoundError'){
+      alert("No camera found on this device.");
+    } else {
+      alert("Camera error: " + e.message);
+    }
   }
 }
 
 function stopScanner(){
   $('camModal').classList.remove('show');
 
-  if(zxingControls){
+  if(codeReader){
     try{
-      zxingControls.stop();
+      codeReader.reset();
     }catch(e){
-      console.log('Controls stop error:',e);
+      console.log('Reader reset error:',e);
     }
-    zxingControls=null;
   }
 
   if(activeStream){
@@ -397,7 +387,6 @@ document.addEventListener('dblclick', (e) => {
 // Handle orientation changes
 window.addEventListener('orientationchange', () => {
   if(activeStream){
-    // Refresh video on orientation change
     setTimeout(()=>{
       const video=$('cam');
       if(video.srcObject){
