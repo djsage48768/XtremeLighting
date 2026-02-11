@@ -262,10 +262,11 @@ function handleScan(raw){
   saveToLocal(); renderTable(); toast(`Issued ${data.Part} (Rev ${data.Rev||'—'}) to Job ${SESSION.jobId}`,'ok');
 }
 
-// ---------- CLEAN iOS SAFE CAMERA SCANNER ----------
+// ---------- TRUE iOS SAFE CAMERA ----------
 let scanMode = 'job';
 let zxingReader = null;
 let zxingControls = null;
+let activeStream = null;
 
 const modal = $('camModal');
 const video = $('cam');
@@ -280,8 +281,19 @@ $('switchCam').addEventListener('click', switchCamera);
 async function ensureSecure(){
   if(location.protocol==='https:' || location.hostname==='localhost') return true;
   $('diag').style.display='block';
-  $('diag').textContent='Camera requires HTTPS or localhost.';
+  $('diag').textContent='Camera requires HTTPS.';
   return false;
+}
+
+function loadZXing(){
+  return new Promise((resolve,reject)=>{
+    if(window.ZXing){ resolve(); return; }
+    const script=document.createElement('script');
+    script.src="https://unpkg.com/@zxing/browser@0.1.4/umd/index.min.js";
+    script.onload=resolve;
+    script.onerror=reject;
+    document.body.appendChild(script);
+  });
 }
 
 async function openScanner(mode){
@@ -292,31 +304,29 @@ async function openScanner(mode){
   modal.style.display='flex';
   camDiag.textContent='Starting camera...';
 
-  // Load ZXing once
-  if(!window.ZXing){
-    await loadZXing();
-  }
+  await loadZXing();
 
   if(!zxingReader){
     zxingReader = new ZXing.BrowserMultiFormatReader();
   }
 
-  const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-  deviceSel.innerHTML='';
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const cameras = devices.filter(d=>d.kind==='videoinput');
 
-  devices.forEach((d,i)=>{
+  deviceSel.innerHTML='';
+  cameras.forEach((d,i)=>{
     const opt=document.createElement('option');
     opt.value=d.deviceId;
     opt.textContent=d.label || `Camera ${i+1}`;
     deviceSel.appendChild(opt);
   });
 
-  const backCam = devices.find(d =>
+  const backCam = cameras.find(d =>
     d.label.toLowerCase().includes('back') ||
     d.label.toLowerCase().includes('rear')
   );
 
-  const selected = backCam?.deviceId || devices[0]?.deviceId;
+  const selected = backCam?.deviceId || cameras[0]?.deviceId;
 
   if(!selected){
     camDiag.textContent='No camera found';
@@ -325,27 +335,37 @@ async function openScanner(mode){
 
   deviceSel.value = selected;
 
-  await startDecode(selected);
+  await startCamera(selected);
 }
 
-function loadZXing(){
-  return new Promise((resolve,reject)=>{
-    const script=document.createElement('script');
-    script.src="https://unpkg.com/@zxing/browser@0.1.4/umd/index.min.js";
-    script.onload=resolve;
-    script.onerror=reject;
-    document.body.appendChild(script);
-  });
-}
+async function startCamera(deviceId){
 
-async function startDecode(deviceId){
+  if(activeStream){
+    activeStream.getTracks().forEach(t=>t.stop());
+    activeStream=null;
+  }
+
   if(zxingControls){
     zxingControls.stop();
     zxingControls=null;
   }
 
-  zxingControls = await zxingReader.decodeFromVideoDevice(
-    deviceId,
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video:{
+      deviceId:{ exact:deviceId },
+      facingMode:'environment'
+    }
+  });
+
+  activeStream = stream;
+  video.srcObject = stream;
+
+  video.setAttribute('playsinline', true);
+  video.muted = true;
+
+  await video.play();
+
+  zxingControls = zxingReader.decodeFromVideoElement(
     video,
     (result,err)=>{
       if(result){
@@ -361,18 +381,22 @@ async function startDecode(deviceId){
 async function switchCamera(){
   const opts = Array.from(deviceSel.options);
   if(!opts.length) return;
-
   const next=(deviceSel.selectedIndex+1)%opts.length;
   deviceSel.selectedIndex=next;
-
-  await startDecode(deviceSel.value);
+  await startCamera(deviceSel.value);
 }
 
 function stopScanner(){
   modal.style.display='none';
+
   if(zxingControls){
     zxingControls.stop();
     zxingControls=null;
+  }
+
+  if(activeStream){
+    activeStream.getTracks().forEach(t=>t.stop());
+    activeStream=null;
   }
 }
 
@@ -389,14 +413,6 @@ function handleDecoded(text){
 addEventListener('click', e=>{
   if(e.target===modal) stopScanner();
 });
-
-function stopScanner(){
-  modal.style.display='none';
-  if(zxingControls){
-    try{ zxingControls.stop(); }catch{}
-    zxingControls=null;
-  }
-}
 
 function onDecoded(text){
   stopScanner();
