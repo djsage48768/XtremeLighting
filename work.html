@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -70,6 +72,8 @@ video{
   display:flex;
   gap:8px;
 }
+
+#scanMsg{ margin-top:6px; font-weight:bold; }
 </style>
 </head>
 <body>
@@ -94,14 +98,18 @@ video{
 <div class="modal" id="camModal">
   <div class="box">
     <header>Scan</header>
-    <video id="cam" playsinline muted></video>
+    <video id="cam" playsinline autoplay muted></video>
     <footer>
       <button id="closeCam">Close</button>
     </footer>
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js"></script>
+<!-- ZXing UMD will be embedded here by Pack-Scanner-SingleFile.ps1 -->
+<script>
+const ZXING_UMD = `/*__ZXING_UMD_PLACEHOLDER__*/`;
+</script>
+
 <script>
 const $ = id => document.getElementById(id);
 
@@ -115,15 +123,13 @@ function toast(msg){
   setTimeout(()=> $('scanMsg').textContent='',2000);
 }
 
-function loadZXing(){
-  return new Promise((resolve,reject)=>{
-    if(window.ZXing){ resolve(); return; }
-    const s=document.createElement('script');
-    s.src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js";
-    s.onload=resolve;
-    s.onerror=reject;
-    document.body.appendChild(s);
-  });
+async function loadZXingEmbedded(){
+  if(window.ZXingBrowser || window.ZXing) return;
+  const s=document.createElement('script');
+  s.type='text/javascript';
+  s.text = ZXING_UMD; // defines window.ZXingBrowser or window.ZXing
+  document.head.appendChild(s);
+  await new Promise(r=>setTimeout(r,0));
 }
 
 $('jobCamBtn').onclick=()=>openScanner('job');
@@ -141,7 +147,6 @@ async function openScanner(mode){
   $('camModal').style.display='flex';
 
   try{
-    // MUST request camera immediately (Safari rule)
     const stream=await navigator.mediaDevices.getUserMedia({
       video:{facingMode:{ideal:'environment'}}
     });
@@ -156,31 +161,35 @@ async function openScanner(mode){
     await video.play();
 
   }catch(e){
-    console.error("Camera permission error:",e);
-    alert("Camera permission denied.");
+    console.error('Camera permission error:',e);
+    alert('Camera permission denied.');
     return;
   }
 
   try{
-
-    await loadZXing();
+    await loadZXingEmbedded();
+    const ZX = window.ZXingBrowser || window.ZXing;
+    if(!ZX) throw new Error('ZXing not available');
 
     if(!zxingReader){
-      zxingReader=new ZXing.BrowserMultiFormatReader();
+      const Reader = ZX.BrowserMultiFormatReader || ZX.BrowserQRCodeReader;
+      zxingReader=new Reader();
     }
 
-    zxingControls=zxingReader.decodeFromVideoElement(
+    // Prefer decode from video element (UMD API supports this)
+    zxingControls = zxingReader.decodeFromVideoElement(
       $('cam'),
       (result,err)=>{
         if(result){
-          handleDecoded(result.getText());
+          const text = result.getText ? result.getText() : (result.text || String(result));
+          handleDecoded(text);
         }
       }
     );
 
   }catch(e){
-    console.error("ZXing init error:",e);
-    alert("Scanner failed to initialize.");
+    console.error('ZXing init error:',e);
+    alert('Scanner failed to initialize.');
   }
 }
 
@@ -188,7 +197,7 @@ function stopScanner(){
   $('camModal').style.display='none';
 
   if(zxingControls){
-    zxingControls.stop();
+    try{ zxingControls.stop(); }catch{}
     zxingControls=null;
   }
 
@@ -204,7 +213,9 @@ function handleDecoded(text){
   if(scanMode==='job'){
     $('jobInput').value=text;
   }else{
-    toast("Scanned: "+text);
+    toast('Scanned: '+text);
   }
 }
 </script>
+</body>
+</html>
