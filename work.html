@@ -1,19 +1,75 @@
-<!DOCTYPE html>
-<html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Issue Parts to Job – QR Scan</title>
+
 <style>
-  :root{ --ok:#107c10; --warn:#ff8c00; --err:#d13438; --bg:#f7f7f7; --card:#fff; --fg:#111; }
-  body{margin:0;font-family:system-ui;background:var(--bg)}
-  header{padding:10px 14px;background:#0f6cbd;color:#fff;display:flex;gap:12px;align-items:center}
-  .card{background:#fff;margin:14px;border-radius:10px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-  .modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:1000}
-  .modal .box{background:#000;color:#fff;border-radius:10px;width:95%;max-width:720px;overflow:hidden}
-  .modal header{padding:8px;background:#111}
-  video{width:100%;background:#000}
-  .modal footer{padding:8px;background:#111;display:flex;gap:8px}
+:root{
+  --ok:#107c10;
+  --warn:#ff8c00;
+  --err:#d13438;
+  --bg:#f7f7f7;
+  --card:#fff;
+}
+
+body{
+  margin:0;
+  font-family:system-ui;
+  background:var(--bg);
+}
+
+header{
+  padding:10px 14px;
+  background:#0f6cbd;
+  color:#fff;
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+
+.card{
+  background:#fff;
+  margin:14px;
+  border-radius:10px;
+  padding:12px;
+  box-shadow:0 1px 3px rgba(0,0,0,.06);
+}
+
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.75);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+}
+
+.modal .box{
+  background:#000;
+  color:#fff;
+  border-radius:10px;
+  width:95%;
+  max-width:720px;
+  overflow:hidden;
+}
+
+.modal header{
+  padding:8px;
+  background:#111;
+}
+
+video{
+  width:100%;
+  background:#000;
+}
+
+.modal footer{
+  padding:8px;
+  background:#111;
+  display:flex;
+  gap:8px;
+}
 </style>
 </head>
 <body>
@@ -44,9 +100,9 @@
     </footer>
   </div>
 </div>
-
 <script>
 const $ = id => document.getElementById(id);
+
 let scanMode='job';
 let activeStream=null;
 let zxingReader=null;
@@ -61,7 +117,7 @@ function loadZXing(){
   return new Promise((resolve,reject)=>{
     if(window.ZXing){ resolve(); return; }
     const s=document.createElement('script');
-    s.src="https://unpkg.com/@zxing/browser@0.1.4/umd/index.min.js";
+    s.src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js";
     s.onload=resolve;
     s.onerror=reject;
     document.body.appendChild(s);
@@ -83,17 +139,27 @@ async function openScanner(mode){
   $('camModal').style.display='flex';
 
   try{
-    // MUST request camera immediately (Safari requirement)
+    // MUST request camera immediately (Safari rule)
     const stream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:'environment'}
+      video:{facingMode:{ideal:'environment'}}
     });
 
     activeStream=stream;
+
     const video=$('cam');
     video.srcObject=stream;
     video.muted=true;
     video.setAttribute('playsinline',true);
+
     await video.play();
+
+  }catch(e){
+    console.error("Camera permission error:",e);
+    alert("Camera permission denied.");
+    return;
+  }
+
+  try{
 
     await loadZXing();
 
@@ -102,7 +168,7 @@ async function openScanner(mode){
     }
 
     zxingControls=zxingReader.decodeFromVideoElement(
-      video,
+      $('cam'),
       (result,err)=>{
         if(result){
           handleDecoded(result.getText());
@@ -111,8 +177,8 @@ async function openScanner(mode){
     );
 
   }catch(e){
-    console.error(e);
-    alert('Camera permission denied or blocked.');
+    console.error("ZXing init error:",e);
+    alert("Scanner failed to initialize.");
   }
 }
 
@@ -140,5 +206,3 @@ function handleDecoded(text){
   }
 }
 </script>
-</body>
-</html>
