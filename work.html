@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>Issue Parts to Job – QR Scan</title>
 
 <style>
@@ -14,66 +16,199 @@
   --card:#fff;
 }
 
+*{
+  box-sizing:border-box;
+}
+
 body{
   margin:0;
-  font-family:system-ui;
+  font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
   background:var(--bg);
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+  padding-top:env(safe-area-inset-top);
+  padding-bottom:env(safe-area-inset-bottom);
 }
 
 header{
-  padding:10px 14px;
+  padding:16px;
+  padding-top:calc(16px + env(safe-area-inset-top));
   background:#0f6cbd;
   color:#fff;
   display:flex;
   gap:12px;
   align-items:center;
+  position:sticky;
+  top:0;
+  z-index:10;
+}
+
+h1{
+  font-size:20px;
+  margin:0;
+  font-weight:600;
 }
 
 .card{
   background:#fff;
-  margin:14px;
-  border-radius:10px;
+  margin:16px;
+  border-radius:12px;
+  padding:16px;
+  box-shadow:0 1px 3px rgba(0,0,0,.08);
+}
+
+label{
+  display:block;
+  font-size:15px;
+  font-weight:600;
+  margin-bottom:8px;
+  color:#333;
+}
+
+input{
+  width:100%;
   padding:12px;
-  box-shadow:0 1px 3px rgba(0,0,0,.06);
+  font-size:16px;
+  border:1px solid #d1d1d6;
+  border-radius:8px;
+  margin-bottom:12px;
+  background:#fff;
+  -webkit-appearance:none;
+}
+
+input:focus{
+  outline:none;
+  border-color:#0f6cbd;
+}
+
+button{
+  width:100%;
+  padding:14px;
+  font-size:16px;
+  font-weight:600;
+  border:none;
+  border-radius:8px;
+  background:#0f6cbd;
+  color:#fff;
+  cursor:pointer;
+  -webkit-appearance:none;
+  touch-action:manipulation;
+  user-select:none;
+}
+
+button:active{
+  opacity:0.8;
+  transform:scale(0.98);
+}
+
+#scanMsg{
+  margin-top:12px;
+  padding:12px;
+  border-radius:8px;
+  background:#e8f5e9;
+  color:#2e7d32;
+  font-size:15px;
+  text-align:center;
+  display:none;
+}
+
+#scanMsg.show{
+  display:block;
 }
 
 .modal{
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,.75);
+  background:rgba(0,0,0,.85);
   display:none;
   align-items:center;
   justify-content:center;
   z-index:1000;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.modal.show{
+  display:flex;
 }
 
 .modal .box{
   background:#000;
   color:#fff;
-  border-radius:10px;
+  border-radius:16px;
   width:95%;
-  max-width:720px;
+  max-width:500px;
   overflow:hidden;
+  max-height:90vh;
+  display:flex;
+  flex-direction:column;
 }
 
 .modal header{
-  padding:8px;
-  background:#111;
+  padding:16px;
+  background:#1a1a1a;
+  font-size:18px;
+  font-weight:600;
+  position:static;
+}
+
+.video-container{
+  position:relative;
+  width:100%;
+  flex:1;
+  background:#000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
 }
 
 video{
   width:100%;
+  height:100%;
+  object-fit:cover;
   background:#000;
 }
 
-.modal footer{
-  padding:8px;
-  background:#111;
-  display:flex;
-  gap:8px;
+.scan-overlay{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
 }
 
-#scanMsg{ margin-top:6px; font-weight:bold; }
+.scan-frame{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  width:250px;
+  height:250px;
+  border:3px solid #fff;
+  border-radius:16px;
+  box-shadow:0 0 0 9999px rgba(0,0,0,.5);
+}
+
+.modal footer{
+  padding:16px;
+  background:#1a1a1a;
+  display:flex;
+  gap:12px;
+}
+
+.modal footer button{
+  background:#fff;
+  color:#000;
+}
+
+@media(max-width:375px){
+  h1{
+    font-size:18px;
+  }
+  
+  .scan-frame{
+    width:200px;
+    height:200px;
+  }
+}
 </style>
 </head>
 <body>
@@ -84,32 +219,33 @@ video{
 
 <div class="card">
   <label>Job</label>
-  <input id="jobInput">
-  <button id="jobCamBtn">Scan Job</button>
+  <input id="jobInput" type="text" placeholder="Scan or enter job number" autocomplete="off">
+  <button id="jobCamBtn">📷 Scan Job QR Code</button>
 </div>
 
 <div class="card">
-  <label>Scan Part</label>
-  <input id="scanInput">
-  <button id="partCamBtn">Scan Part</button>
+  <label>Part</label>
+  <input id="scanInput" type="text" placeholder="Scan or enter part number" autocomplete="off">
+  <button id="partCamBtn">📷 Scan Part QR Code</button>
   <div id="scanMsg"></div>
 </div>
 
 <div class="modal" id="camModal">
   <div class="box">
-    <header>Scan</header>
-    <video id="cam" playsinline autoplay muted></video>
+    <header>Scanning QR Code</header>
+    <div class="video-container">
+      <video id="cam" playsinline muted autoplay></video>
+      <div class="scan-overlay">
+        <div class="scan-frame"></div>
+      </div>
+    </div>
     <footer>
-      <button id="closeCam">Close</button>
+      <button id="closeCam">Cancel</button>
     </footer>
   </div>
 </div>
 
-<!-- ZXing UMD will be embedded here by Pack-Scanner-SingleFile.ps1 -->
-<script>
-const ZXING_UMD = `/*__ZXING_UMD_PLACEHOLDER__*/`;
-</script>
-
+<script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -119,36 +255,55 @@ let zxingReader=null;
 let zxingControls=null;
 
 function toast(msg){
-  $('scanMsg').textContent=msg;
-  setTimeout(()=> $('scanMsg').textContent='',2000);
+  const el = $('scanMsg');
+  el.textContent=msg;
+  el.classList.add('show');
+  setTimeout(()=> {
+    el.classList.remove('show');
+  },3000);
 }
 
-async function loadZXingEmbedded(){
-  if(window.ZXingBrowser || window.ZXing) return;
-  const s=document.createElement('script');
-  s.type='text/javascript';
-  s.text = ZXING_UMD; // defines window.ZXingBrowser or window.ZXing
-  document.head.appendChild(s);
-  await new Promise(r=>setTimeout(r,0));
+function loadZXing(){
+  return new Promise((resolve,reject)=>{
+    if(window.ZXing){ resolve(); return; }
+    const s=document.createElement('script');
+    s.src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js";
+    s.onload=resolve;
+    s.onerror=reject;
+    document.body.appendChild(s);
+  });
 }
 
 $('jobCamBtn').onclick=()=>openScanner('job');
 $('partCamBtn').onclick=()=>openScanner('part');
 $('closeCam').onclick=stopScanner;
 
+// Close modal on background click
+$('camModal').onclick=(e)=>{
+  if(e.target === $('camModal')){
+    stopScanner();
+  }
+};
+
 async function openScanner(mode){
   scanMode=mode;
 
   if(location.protocol!=='https:' && location.hostname!=='localhost'){
-    alert('Camera requires HTTPS.');
+    alert('Camera requires HTTPS or localhost.');
     return;
   }
 
-  $('camModal').style.display='flex';
+  $('camModal').classList.add('show');
 
   try{
+    // Request camera with ideal constraints for iPhone
     const stream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:{ideal:'environment'}}
+      video:{
+        facingMode:{ideal:'environment'},
+        width:{ideal:1920},
+        height:{ideal:1080}
+      },
+      audio:false
     });
 
     activeStream=stream;
@@ -156,48 +311,55 @@ async function openScanner(mode){
     const video=$('cam');
     video.srcObject=stream;
     video.muted=true;
-    video.setAttribute('playsinline',true);
+    video.playsInline=true;
+    video.setAttribute('playsinline','');
+    video.setAttribute('webkit-playsinline','');
 
-    await video.play();
+    // Ensure video plays on iOS
+    await video.play().catch(e=>{
+      console.log('Autoplay attempted, awaiting user gesture');
+    });
 
   }catch(e){
-    console.error('Camera permission error:',e);
-    alert('Camera permission denied.');
+    console.error("Camera permission error:",e);
+    stopScanner();
+    alert("Camera access denied. Please enable camera permissions in Settings.");
     return;
   }
 
   try{
-    await loadZXingEmbedded();
-    const ZX = window.ZXingBrowser || window.ZXing;
-    if(!ZX) throw new Error('ZXing not available');
+
+    await loadZXing();
 
     if(!zxingReader){
-      const Reader = ZX.BrowserMultiFormatReader || ZX.BrowserQRCodeReader;
-      zxingReader=new Reader();
+      zxingReader=new ZXing.BrowserMultiFormatReader();
     }
 
-    // Prefer decode from video element (UMD API supports this)
-    zxingControls = zxingReader.decodeFromVideoElement(
+    zxingControls=await zxingReader.decodeFromVideoElement(
       $('cam'),
       (result,err)=>{
         if(result){
-          const text = result.getText ? result.getText() : (result.text || String(result));
-          handleDecoded(text);
+          handleDecoded(result.getText());
         }
       }
     );
 
   }catch(e){
-    console.error('ZXing init error:',e);
-    alert('Scanner failed to initialize.');
+    console.error("ZXing init error:",e);
+    stopScanner();
+    alert("Scanner failed to initialize.");
   }
 }
 
 function stopScanner(){
-  $('camModal').style.display='none';
+  $('camModal').classList.remove('show');
 
   if(zxingControls){
-    try{ zxingControls.stop(); }catch{}
+    try{
+      zxingControls.stop();
+    }catch(e){
+      console.log('Controls stop error:',e);
+    }
     zxingControls=null;
   }
 
@@ -205,17 +367,46 @@ function stopScanner(){
     activeStream.getTracks().forEach(t=>t.stop());
     activeStream=null;
   }
+
+  const video=$('cam');
+  video.srcObject=null;
 }
 
 function handleDecoded(text){
+  // Haptic feedback on iOS
+  if(navigator.vibrate){
+    navigator.vibrate(100);
+  }
+  
   stopScanner();
 
   if(scanMode==='job'){
     $('jobInput').value=text;
+    toast("✓ Job scanned: "+text);
   }else{
-    toast('Scanned: '+text);
+    $('scanInput').value=text;
+    toast("✓ Part scanned: "+text);
   }
 }
+
+// Prevent zoom on double-tap
+document.addEventListener('dblclick', (e) => {
+  e.preventDefault();
+}, { passive: false });
+
+// Handle orientation changes
+window.addEventListener('orientationchange', () => {
+  if(activeStream){
+    // Refresh video on orientation change
+    setTimeout(()=>{
+      const video=$('cam');
+      if(video.srcObject){
+        video.play();
+      }
+    },100);
+  }
+});
 </script>
+
 </body>
 </html>
