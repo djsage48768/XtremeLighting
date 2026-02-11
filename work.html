@@ -116,6 +116,11 @@ button:active{
   display:block;
 }
 
+#scanMsg.error{
+  background:#ffebee;
+  color:#c62828;
+}
+
 .modal{
   position:fixed;
   inset:0;
@@ -173,6 +178,22 @@ button:active{
   color:#000;
 }
 
+#debugLog{
+  margin:16px;
+  padding:12px;
+  background:#fff3cd;
+  border-radius:8px;
+  font-size:12px;
+  font-family:monospace;
+  max-height:200px;
+  overflow-y:auto;
+  display:none;
+}
+
+#debugLog.show{
+  display:block;
+}
+
 @media(max-width:375px){
   h1{
     font-size:18px;
@@ -199,6 +220,8 @@ button:active{
   <div id="scanMsg"></div>
 </div>
 
+<div id="debugLog"></div>
+
 <div class="modal" id="camModal">
   <div class="box">
     <header>Scanning QR Code</header>
@@ -215,93 +238,140 @@ const $ = id => document.getElementById(id);
 
 let scanMode='job';
 let html5QrcodeScanner = null;
+let debugMessages = [];
 
-function toast(msg){
+function addDebug(msg){
+  console.log(msg);
+  debugMessages.push(new Date().toLocaleTimeString() + ': ' + msg);
+  const log = $('debugLog');
+  log.textContent = debugMessages.join('\n');
+  log.classList.add('show');
+}
+
+function toast(msg, isError = false){
   const el = $('scanMsg');
   el.textContent=msg;
   el.classList.add('show');
+  if(isError){
+    el.classList.add('error');
+  } else {
+    el.classList.remove('error');
+  }
   setTimeout(()=> {
     el.classList.remove('show');
-  },3000);
+  },5000);
 }
 
 $('jobCamBtn').onclick=()=>openScanner('job');
 $('partCamBtn').onclick=()=>openScanner('part');
 $('closeCam').onclick=stopScanner;
 
-// Close modal on background click
 $('camModal').onclick=(e)=>{
   if(e.target === $('camModal')){
     stopScanner();
   }
 };
 
-function openScanner(mode){
+async function openScanner(mode){
   scanMode=mode;
+  
+  addDebug('Opening scanner for: ' + mode);
+  addDebug('Protocol: ' + location.protocol);
+  addDebug('Hostname: ' + location.hostname);
 
   if(location.protocol!=='https:' && location.hostname!=='localhost'){
-    alert('Camera requires HTTPS or localhost.');
+    toast('Camera requires HTTPS or localhost.', true);
+    addDebug('ERROR: Not HTTPS');
+    return;
+  }
+
+  // Check if getUserMedia is available
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    toast('Camera not supported on this browser.', true);
+    addDebug('ERROR: getUserMedia not available');
     return;
   }
 
   $('camModal').classList.add('show');
+  addDebug('Modal opened');
 
   try{
+    addDebug('Creating Html5Qrcode instance...');
     html5QrcodeScanner = new Html5Qrcode("reader");
+    addDebug('Html5Qrcode created successfully');
     
     const config = {
       fps: 10,
       qrbox: { width: 250, height: 250 },
-      aspectRatio: 1.0
+      aspectRatio: 1.0,
+      disableFlip: false
     };
 
-    html5QrcodeScanner.start(
+    addDebug('Starting scanner with config: ' + JSON.stringify(config));
+
+    await html5QrcodeScanner.start(
       { facingMode: "environment" },
       config,
       (decodedText, decodedResult) => {
+        addDebug('SUCCESS: Decoded: ' + decodedText);
         handleDecoded(decodedText);
       },
       (errorMessage) => {
-        // Ignore scanning errors (they happen continuously while scanning)
+        // Silent - these happen constantly while scanning
       }
-    ).catch(err => {
-      console.error("Start error:", err);
-      stopScanner();
-      
-      if(err.toString().includes('NotAllowedError')){
-        alert("Camera access denied. Please enable camera permissions in Settings.");
-      } else if(err.toString().includes('NotFoundError')){
-        alert("No camera found on this device.");
-      } else {
-        alert("Camera error. Please try again.");
-      }
-    });
+    );
+    
+    addDebug('Scanner started successfully');
 
-  } catch(e) {
-    console.error("Scanner error:", e);
+  } catch(err) {
+    addDebug('CATCH ERROR: ' + err.toString());
+    addDebug('Error name: ' + (err.name || 'unknown'));
+    addDebug('Error message: ' + (err.message || 'unknown'));
+    addDebug('Error stack: ' + (err.stack || 'unknown'));
+    
     stopScanner();
-    alert("Failed to open scanner: " + e.message);
+    
+    let userMsg = 'Camera error: ';
+    
+    if(err.toString().includes('NotAllowedError') || err.name === 'NotAllowedError'){
+      userMsg += 'Permission denied. Enable camera in Settings > Safari.';
+    } else if(err.toString().includes('NotFoundError') || err.name === 'NotFoundError'){
+      userMsg += 'No camera found.';
+    } else if(err.toString().includes('NotReadableError') || err.name === 'NotReadableError'){
+      userMsg += 'Camera is in use by another app.';
+    } else if(err.toString().includes('OverconstrainedError') || err.name === 'OverconstrainedError'){
+      userMsg += 'Camera constraints not supported.';
+    } else {
+      userMsg += err.message || err.toString();
+    }
+    
+    toast(userMsg, true);
   }
 }
 
 function stopScanner(){
+  addDebug('Stopping scanner...');
+  
   if(html5QrcodeScanner){
     html5QrcodeScanner.stop().then(() => {
+      addDebug('Scanner stopped');
       html5QrcodeScanner.clear();
       html5QrcodeScanner = null;
       $('camModal').classList.remove('show');
     }).catch(err => {
-      console.error("Stop error:", err);
+      addDebug('Stop error: ' + err.toString());
       html5QrcodeScanner = null;
       $('camModal').classList.remove('show');
     });
   } else {
+    addDebug('No scanner to stop');
     $('camModal').classList.remove('show');
   }
 }
 
 function handleDecoded(text){
-  // Haptic feedback on iOS
+  addDebug('Handling decoded text: ' + text);
+  
   if(navigator.vibrate){
     navigator.vibrate(100);
   }
@@ -317,10 +387,13 @@ function handleDecoded(text){
   }
 }
 
-// Prevent zoom on double-tap
 document.addEventListener('dblclick', (e) => {
   e.preventDefault();
 }, { passive: false });
+
+// Log page load
+addDebug('Page loaded');
+addDebug('User agent: ' + navigator.userAgent);
 </script>
 
 </body>
