@@ -183,15 +183,12 @@ button:active{
   padding:12px;
   background:#fff3cd;
   border-radius:8px;
-  font-size:12px;
+  font-size:11px;
   font-family:monospace;
-  max-height:200px;
+  max-height:300px;
   overflow-y:auto;
-  display:none;
-}
-
-#debugLog.show{
-  display:block;
+  white-space:pre-wrap;
+  word-break:break-word;
 }
 
 @media(max-width:375px){
@@ -207,6 +204,8 @@ button:active{
   <h1>Issue Parts to Job – QR Scan</h1>
 </header>
 
+<div id="debugLog">Debug Log (scroll down after clicking scan)...</div>
+
 <div class="card">
   <label>Job</label>
   <input id="jobInput" type="text" placeholder="Scan or enter job number" autocomplete="off">
@@ -219,8 +218,6 @@ button:active{
   <button id="partCamBtn">📷 Scan Part QR Code</button>
   <div id="scanMsg"></div>
 </div>
-
-<div id="debugLog"></div>
 
 <div class="modal" id="camModal">
   <div class="box">
@@ -245,7 +242,7 @@ function addDebug(msg){
   debugMessages.push(new Date().toLocaleTimeString() + ': ' + msg);
   const log = $('debugLog');
   log.textContent = debugMessages.join('\n');
-  log.classList.add('show');
+  log.scrollTop = log.scrollHeight;
 }
 
 function toast(msg, isError = false){
@@ -262,6 +259,18 @@ function toast(msg, isError = false){
   },5000);
 }
 
+// Capture all console errors
+window.onerror = function(msg, url, line, col, error) {
+  addDebug('WINDOW ERROR: ' + msg + ' at line ' + line);
+  if(error) addDebug('Error object: ' + error.toString());
+  return false;
+};
+
+// Capture promise rejections
+window.onunhandledrejection = function(event) {
+  addDebug('UNHANDLED REJECTION: ' + event.reason);
+};
+
 $('jobCamBtn').onclick=()=>openScanner('job');
 $('partCamBtn').onclick=()=>openScanner('part');
 $('closeCam').onclick=stopScanner;
@@ -275,9 +284,11 @@ $('camModal').onclick=(e)=>{
 async function openScanner(mode){
   scanMode=mode;
   
+  addDebug('========================================');
   addDebug('Opening scanner for: ' + mode);
   addDebug('Protocol: ' + location.protocol);
   addDebug('Hostname: ' + location.hostname);
+  addDebug('User agent: ' + navigator.userAgent);
 
   if(location.protocol!=='https:' && location.hostname!=='localhost'){
     toast('Camera requires HTTPS or localhost.', true);
@@ -289,16 +300,27 @@ async function openScanner(mode){
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
     toast('Camera not supported on this browser.', true);
     addDebug('ERROR: getUserMedia not available');
+    addDebug('navigator.mediaDevices exists: ' + !!navigator.mediaDevices);
     return;
   }
+  
+  addDebug('getUserMedia is available');
 
   $('camModal').classList.add('show');
   addDebug('Modal opened');
 
   try{
+    addDebug('Checking if Html5Qrcode is defined: ' + (typeof Html5Qrcode));
+    
+    if(typeof Html5Qrcode === 'undefined'){
+      throw new Error('Html5Qrcode library not loaded');
+    }
+    
     addDebug('Creating Html5Qrcode instance...');
     html5QrcodeScanner = new Html5Qrcode("reader");
     addDebug('Html5Qrcode created successfully');
+    addDebug('Scanner object type: ' + typeof html5QrcodeScanner);
+    addDebug('Scanner has start method: ' + (typeof html5QrcodeScanner.start === 'function'));
     
     const config = {
       fps: 10,
@@ -307,9 +329,10 @@ async function openScanner(mode){
       disableFlip: false
     };
 
-    addDebug('Starting scanner with config: ' + JSON.stringify(config));
+    addDebug('Starting scanner with config...');
+    addDebug('Config: ' + JSON.stringify(config));
 
-    await html5QrcodeScanner.start(
+    const startPromise = html5QrcodeScanner.start(
       { facingMode: "environment" },
       config,
       (decodedText, decodedResult) => {
@@ -321,30 +344,39 @@ async function openScanner(mode){
       }
     );
     
-    addDebug('Scanner started successfully');
+    addDebug('Start method called, waiting for promise...');
+    await startPromise;
+    addDebug('Scanner started successfully!');
 
   } catch(err) {
-    addDebug('CATCH ERROR: ' + err.toString());
-    addDebug('Error name: ' + (err.name || 'unknown'));
-    addDebug('Error message: ' + (err.message || 'unknown'));
-    addDebug('Error stack: ' + (err.stack || 'unknown'));
+    addDebug('========================================');
+    addDebug('CATCH BLOCK ENTERED');
+    addDebug('Error type: ' + typeof err);
+    addDebug('Error toString: ' + err.toString());
+    addDebug('Error name: ' + (err.name || 'no name'));
+    addDebug('Error message: ' + (err.message || 'no message'));
+    
+    if(err.stack){
+      addDebug('Error stack: ' + err.stack.substring(0, 500));
+    }
     
     stopScanner();
     
-    let userMsg = 'Camera error: ';
+    let userMsg = 'Scanner failed: ';
     
     if(err.toString().includes('NotAllowedError') || err.name === 'NotAllowedError'){
-      userMsg += 'Permission denied. Enable camera in Settings > Safari.';
+      userMsg = 'Camera permission denied. Enable in Settings > Safari > Camera.';
     } else if(err.toString().includes('NotFoundError') || err.name === 'NotFoundError'){
-      userMsg += 'No camera found.';
+      userMsg = 'No camera found on device.';
     } else if(err.toString().includes('NotReadableError') || err.name === 'NotReadableError'){
-      userMsg += 'Camera is in use by another app.';
+      userMsg = 'Camera in use by another app.';
     } else if(err.toString().includes('OverconstrainedError') || err.name === 'OverconstrainedError'){
-      userMsg += 'Camera constraints not supported.';
+      userMsg = 'Camera constraints not supported.';
     } else {
-      userMsg += err.message || err.toString();
+      userMsg += (err.message || err.toString());
     }
     
+    addDebug('Showing user message: ' + userMsg);
     toast(userMsg, true);
   }
 }
@@ -392,8 +424,8 @@ document.addEventListener('dblclick', (e) => {
 }, { passive: false });
 
 // Log page load
-addDebug('Page loaded');
-addDebug('User agent: ' + navigator.userAgent);
+addDebug('Page loaded successfully');
+addDebug('Html5Qrcode library check: ' + (typeof Html5Qrcode !== 'undefined' ? 'LOADED' : 'NOT LOADED'));
 </script>
 
 </body>
