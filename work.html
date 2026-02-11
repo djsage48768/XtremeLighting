@@ -262,64 +262,40 @@ function handleScan(raw){
   saveToLocal(); renderTable(); toast(`Issued ${data.Part} (Rev ${data.Rev||'—'}) to Job ${SESSION.jobId}`,'ok');
 }
 
-// ---------- iOS SAFE CAMERA SCANNER (ZXing Only) ----------
+// ---------- CLEAN iOS SAFE CAMERA SCANNER ----------
+let scanMode = 'job';
+let zxingReader = null;
+let zxingControls = null;
+
 const modal = $('camModal');
 const video = $('cam');
 const deviceSel = $('deviceSel');
 const camDiag = $('camDiag');
 
-let scanMode = 'job';
-let zxingReader = null;
-let zxingControls = null;
-let zxingLoaded = false;
-
 $('jobCamBtn').addEventListener('click', ()=> openScanner('job'));
 $('partCamBtn').addEventListener('click', ()=> openScanner('part'));
 $('closeCam').addEventListener('click', stopScanner);
-$('switchCam').addEventListener('click', async ()=>{
-  const opts = Array.from(deviceSel.options);
-  if(!opts.length) return;
-  const next = (deviceSel.selectedIndex+1) % opts.length;
-  deviceSel.selectedIndex = next;
-  await startZXing(deviceSel.value);
-});
+$('switchCam').addEventListener('click', switchCamera);
 
 async function ensureSecure(){
-  if(location.protocol==='https:' || location.hostname==='localhost' || location.hostname==='127.0.0.1') return true;
-  const d=$('diag');
-  d.style.display='block';
-  d.textContent='Camera requires HTTPS or localhost.';
+  if(location.protocol==='https:' || location.hostname==='localhost') return true;
+  $('diag').style.display='block';
+  $('diag').textContent='Camera requires HTTPS or localhost.';
   return false;
-}
-
-function loadZXing(){
-  return new Promise((resolve,reject)=>{
-    if(zxingLoaded){ resolve(); return; }
-    const script = document.createElement('script');
-    script.src = "https://unpkg.com/@zxing/browser@0.1.4/umd/index.min.js";
-    script.onload = ()=>{
-      zxingLoaded = true;
-      resolve();
-    };
-    script.onerror = reject;
-    document.body.appendChild(script);
-  });
 }
 
 async function openScanner(mode){
   scanMode = mode;
+
   if(!(await ensureSecure())) return;
 
-  $('camTitle').textContent = mode==='job' ? 'Scan JOB barcode' : 'Scan Part QR';
   modal.style.display='flex';
-  camDiag.textContent='Loading scanner…';
+  camDiag.textContent='Starting camera...';
 
-  await loadZXing();
-  await startZXing();
-}
-
-async function startZXing(deviceId){
-  if(zxingControls){ try{ zxingControls.stop(); }catch{} }
+  // Load ZXing once
+  if(!window.ZXing){
+    await loadZXing();
+  }
 
   if(!zxingReader){
     zxingReader = new ZXing.BrowserMultiFormatReader();
@@ -335,8 +311,12 @@ async function startZXing(deviceId){
     deviceSel.appendChild(opt);
   });
 
-  const backCam = devices.find(d=> d.label.toLowerCase().includes('back'));
-  const selected = deviceId || backCam?.deviceId || devices[0]?.deviceId;
+  const backCam = devices.find(d =>
+    d.label.toLowerCase().includes('back') ||
+    d.label.toLowerCase().includes('rear')
+  );
+
+  const selected = backCam?.deviceId || devices[0]?.deviceId;
 
   if(!selected){
     camDiag.textContent='No camera found';
@@ -345,19 +325,70 @@ async function startZXing(deviceId){
 
   deviceSel.value = selected;
 
+  await startDecode(selected);
+}
+
+function loadZXing(){
+  return new Promise((resolve,reject)=>{
+    const script=document.createElement('script');
+    script.src="https://unpkg.com/@zxing/browser@0.1.4/umd/index.min.js";
+    script.onload=resolve;
+    script.onerror=reject;
+    document.body.appendChild(script);
+  });
+}
+
+async function startDecode(deviceId){
+  if(zxingControls){
+    zxingControls.stop();
+    zxingControls=null;
+  }
+
   zxingControls = await zxingReader.decodeFromVideoDevice(
-    selected,
+    deviceId,
     video,
     (result,err)=>{
       if(result){
-        const text = result.getText();
-        onDecoded(text);
+        const text=result.getText();
+        handleDecoded(text);
       }
     }
   );
 
-  camDiag.textContent=`Camera active (${devices.length})`;
+  camDiag.textContent='Camera active';
 }
+
+async function switchCamera(){
+  const opts = Array.from(deviceSel.options);
+  if(!opts.length) return;
+
+  const next=(deviceSel.selectedIndex+1)%opts.length;
+  deviceSel.selectedIndex=next;
+
+  await startDecode(deviceSel.value);
+}
+
+function stopScanner(){
+  modal.style.display='none';
+  if(zxingControls){
+    zxingControls.stop();
+    zxingControls=null;
+  }
+}
+
+function handleDecoded(text){
+  stopScanner();
+
+  if(scanMode==='job'){
+    $('jobInput').value=text;
+  }else{
+    handleScan(text);
+  }
+}
+
+addEventListener('click', e=>{
+  if(e.target===modal) stopScanner();
+});
 
 function stopScanner(){
   modal.style.display='none';
