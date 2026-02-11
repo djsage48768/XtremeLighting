@@ -901,15 +901,16 @@ function handleScan(qrData) {
 
 function processPartScan(qrData) {
   // Parse QR code data
-  // Expected format: part,rev,lot,location,bin (comma separated)
-  const parts = qrData.split(',').map(s => s.trim());
+  // Expected format: partNumber;revision;lot;bin;location (semicolon separated)
+  // Example: 01H09010-02;C;ICA6R-0000;10;9H SH4;
+  const parts = qrData.split(';').map(s => s.trim());
   
   if(parts.length < 2) {
     showToast('Invalid QR code format', 'error');
     return;
   }
   
-  const [partNumber, revision, lot = '', location = '', bin = ''] = parts;
+  const [partNumber, revision, lot = '', bin = '', location = ''] = parts;
   const key = `${partNumber}-${revision}`;
   
   // Find this part in the BOM
