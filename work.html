@@ -2,392 +2,122 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Issue Parts to Job – QR Scan (Preloaded + Camera)</title>
+<title>Issue Parts to Job – QR Scan</title>
 <style>
   :root{ --ok:#107c10; --warn:#ff8c00; --err:#d13438; --bg:#f7f7f7; --card:#fff; --fg:#111; }
-  html,body{height:100%}
-  body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--fg)}
-  header{padding:10px 14px;background:#0f6cbd;color:#fff;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-  header h1{font-size:1.05rem;margin:0}
-  .banner{background:#fff4ce;color:#5c3b00;padding:6px 10px}
-  main{padding:14px;display:grid;gap:14px}
-  .card{background:var(--card);border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);padding:12px}
-  .grid{display:grid;gap:12px}
-  .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
-  label{font-size:.9rem}
-  input[type="text"], select{width:100%;padding:8px;border:1px solid #c8c8c8;border-radius:8px;font-size:0.95rem}
-  .btn{background:#0f6cbd;color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer}
-  .btn.secondary{background:#616161}
-  .btn.icon{padding:6px 10px}
-  .btn:disabled{opacity:.6;cursor:not-allowed}
-  .switch{display:flex;align-items:center;gap:8px}
-  .status{padding:8px;border-radius:8px}
-  .status.ok{background:#e7f6e7;color:#054b16}
-  .status.err{background:#fde7e9;color:#6e0811}
-  .status.warn{background:#fff4ce;color:#5c3b00}
-  table{border-collapse:collapse;width:100%}
-  th,td{border-bottom:1px solid #eee;padding:6px 8px;text-align:left;font-size:0.95rem}
-  th{background:#fafafa}
-  .qty{font-variant-numeric:tabular-nums}
-  .pill{padding:4px 8px;border-radius:999px;background:#efefef}
-  .muted{color:#666;font-size:.9rem}
-  .right{margin-left:auto}
-  /* Camera modal */
+  body{margin:0;font-family:system-ui;background:var(--bg)}
+  header{padding:10px 14px;background:#0f6cbd;color:#fff;display:flex;gap:12px;align-items:center}
+  .card{background:#fff;margin:14px;border-radius:10px;padding:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:1000}
-  .modal .box{background:#000;color:#fff;border-radius:10px;max-width:92vw;width:720px;display:grid;grid-template-rows:auto 1fr auto;overflow:hidden}
-  .modal header{background:#111;color:#fff;padding:8px 12px;display:flex;align-items:center;gap:8px}
-  .modal header h3{margin:0;font-size:1rem}
-  .modal .content{position:relative;background:#000}
-  video#cam{width:100%;height:auto;background:#000}
-  canvas#frame{display:none}
-  .overlay{position:absolute;inset:0;border:2px solid rgba(255,255,255,.3);box-sizing:border-box}
-  .modal footer{background:#111;color:#ddd;display:flex;gap:8px;align-items:center;padding:8px 12px}
-  .modal footer select, .modal footer button{font-size:.9rem}
-  .badge{background:#333;border-radius:6px;padding:2px 6px;margin-left:auto}
+  .modal .box{background:#000;color:#fff;border-radius:10px;width:95%;max-width:720px;overflow:hidden}
+  .modal header{padding:8px;background:#111}
+  video{width:100%;background:#000}
+  .modal footer{padding:8px;background:#111;display:flex;gap:8px}
 </style>
 </head>
 <body>
+
 <header>
   <h1>Issue Parts to Job – QR Scan</h1>
-  <div class="muted">Unit: <span id="selUnitLabel" class="pill">(none)</span></div>
-  <div class="muted">Job: <span id="jobLabel" class="pill">(none)</span></div>
 </header>
-<div id="diag" class="banner" style="display:none"></div>
-<main>
-  <section class="card">
-    <h2>1) Select Unit & Job</h2>
-    <div class="cols">
-      <label>Unit (Master Part + Rev)
-        <select id="unitSelect"></select>
-      </label>
-      <label>Job (tap camera or type)
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input id="jobInput" type="text" placeholder="Tap camera or type job barcode" />
-          <button class="btn icon" id="jobCamBtn" title="Scan job barcode">📷</button>
-        </div>
-      </label>
-      <div class="grid">
-        <div class="switch"><input type="checkbox" id="enforceRev" checked /> <label for="enforceRev">Enforce exact component Rev</label></div>
-        <div class="switch"><input type="checkbox" id="preventOver" checked /> <label for="preventOver">Prevent over‑issue beyond required Qty</label></div>
-      </div>
-    </div>
-    <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
-      <button class="btn" id="startBtn">Start Session</button>
-      <button class="btn secondary" id="clearJobBtn" disabled>Clear Session</button>
-      <div class="right muted">Units available: <span id="unitCount"></span></div>
-    </div>
-  </section>
 
-  <section class="card" id="scanSection" style="display:none;">
-    <h2>2) Scan Parts</h2>
-    <div style="display:flex;gap:8px;align-items:center;">
-      <input id="scanInput" type="text" placeholder="Tap camera or scan with handheld…" autocomplete="off"/>
-      <button class="btn icon" id="partCamBtn" title="Scan part QR">📷</button>
-      <button class="btn" id="undoBtn" title="Undo last scan">Undo</button>
-      <button class="btn secondary" id="exportBtn" title="Export issuance log">Export CSV</button>
-    </div>
-    <div id="scanMsg" class="status" style="margin-top:8px; display:none;"></div>
-  </section>
+<div class="card">
+  <label>Job</label>
+  <input id="jobInput">
+  <button id="jobCamBtn">Scan Job</button>
+</div>
 
-  <section class="card" id="progressSection" style="display:none;">
-    <h2>3) Progress – Issued vs Required</h2>
-    <div id="progressSummary" class="muted">Scan to update…</div>
-    <div class="grid" style="overflow:auto; max-height:48vh;">
-      <table id="bomTable"> 
-        <thead>
-          <tr><th>Component Part</th><th>Rev Req</th><th class="qty">Qty Req</th><th class="qty">Issued</th><th class="qty">Remaining</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </section>
-</main>
+<div class="card">
+  <label>Scan Part</label>
+  <input id="scanInput">
+  <button id="partCamBtn">Scan Part</button>
+  <div id="scanMsg"></div>
+</div>
 
-<!-- Camera modal -->
-<div class="modal" id="camModal" role="dialog" aria-modal="true" aria-labelledby="camTitle">
+<div class="modal" id="camModal">
   <div class="box">
-    <header><h3 id="camTitle">Scan</h3><span id="camHint" class="pill" style="background:#222;color:#ddd">Point camera at code…</span></header>
-    <div class="content">
-      <video id="cam" playsinline autoplay muted></video>
-      <canvas id="frame"></canvas>
-      <div class="overlay"></div>
-    </div>
+    <header>Scan</header>
+    <video id="cam" playsinline muted></video>
     <footer>
-      <button class="btn" id="closeCam">Close</button>
-      <button class="btn" id="switchCam">Switch Camera</button>
-      <select id="deviceSel"></select>
-      <span id="camDiag" class="badge"></span>
+      <button id="closeCam">Close</button>
     </footer>
   </div>
 </div>
 
 <script>
-// --- Fallback hardcoded data for your 4 units (EA items, qty >=1)
-const FALLBACK_UNITS = [
-  {key:'01H09000-01__U', MasterPart:'01H09000-01', MasterRev:'U'},
-  {key:'01H08000-01__U', MasterPart:'01H08000-01', MasterRev:'U'},
-  {key:'01H05000-01__T', MasterPart:'01H05000-01', MasterRev:'T'},
-  {key:'01H01000-01__H', MasterPart:'01H01000-01', MasterRev:'H'}
-];
-const FALLBACK_BOM = {
-  '01H09000-01__U': [
-    {ComponentPart:'01H09100-01',ComponentRev:'A',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09300-01',ComponentRev:'A',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09001-01',ComponentRev:'G',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09002-02',ComponentRev:'C',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09400-03',ComponentRev:'A',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09004-01',ComponentRev:'E',QtyReq:4,Issued:[]},
-    {ComponentPart:'01H09005-01',ComponentRev:'B',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09008-01',ComponentRev:'B',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09009-01',ComponentRev:'B',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09010-03',ComponentRev:'A',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09012-01',ComponentRev:'A',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09013-01',ComponentRev:'D',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09014-01',ComponentRev:'B',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09020-01',ComponentRev:'B',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09021-01',ComponentRev:'B',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09022-01',ComponentRev:'C',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09023-01',ComponentRev:'A',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09024-01',ComponentRev:'A',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09025-01',ComponentRev:'B',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09026-01',ComponentRev:'A',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H09030-02',ComponentRev:'A',QtyReq:1,Issued:[]}
-  ],
-  '01H08000-01__U': [
-    {ComponentPart:'01H08200-01',ComponentRev:'A',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H08001-01',ComponentRev:'A',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H08002-01',ComponentRev:'K',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H08004-01',ComponentRev:'H',QtyReq:4,Issued:[]},
-    {ComponentPart:'01H08005-01',ComponentRev:'B',QtyReq:1,Issued:[]}
-  ],
-  '01H05000-01__T': [
-    {ComponentPart:'01H05100-01',ComponentRev:'A',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H05200-01',ComponentRev:'A',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H05300-02',ComponentRev:'A',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H05001-01',ComponentRev:'C',QtyReq:1,Issued:[]}
-  ],
-  '01H01000-01__H': [
-    {ComponentPart:'01H01100-01',ComponentRev:'A',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H01001-01',ComponentRev:'E',QtyReq:1,Issued:[]},
-    {ComponentPart:'01H01003-01',ComponentRev:'E',QtyReq:1,Issued:[]}
-  ]
-};
-
-let UNITS = FALLBACK_UNITS; // using fallback; if you want, I can embed the full preloaded block again
-let BOM = FALLBACK_BOM;
-let SESSION = null;
-
 const $ = id => document.getElementById(id);
-function toast(msg, type='ok'){ const el=$('scanMsg'); el.textContent=msg; el.className='status '+(type==='ok'?'ok':type==='err'?'err':'warn'); el.style.display='block'; setTimeout(()=>{ el.style.display='none'; }, 2000); }
-function fmt(n){ return Number(n).toLocaleString(undefined,{maximumFractionDigits:0}); }
+let scanMode='job';
+let activeStream=null;
+let zxingReader=null;
+let zxingControls=null;
 
-(function init(){
-  const sel=$('unitSelect'); sel.innerHTML='';
-  UNITS.forEach(u=>{ const opt=document.createElement('option'); opt.value=u.key; opt.textContent=`${u.MasterPart} (Rev ${u.MasterRev})`; sel.appendChild(opt); });
-  $('unitCount').textContent = UNITS.length;
-})();
-
-$('startBtn').addEventListener('click', ()=>{
-  const key = $('unitSelect').value; if(!key){ alert('Select a unit'); return; }
-  const job = $('jobInput').value.trim(); if(!job){ alert('Scan or enter a Job first'); $('jobInput').focus(); return; }
-  SESSION = { unitKey:key, jobId:job };
-  const u = UNITS.find(x=>x.key===key);
-  $('selUnitLabel').textContent = u ? `${u.MasterPart} (Rev ${u.MasterRev})` : key;
-  $('jobLabel').textContent = job;
-  $('scanSection').style.display='block';
-  $('progressSection').style.display='block';
-  $('clearJobBtn').disabled=false;
-  $('scanInput').focus();
-  loadFromLocal();
-  renderTable();
-});
-
-$('clearJobBtn').addEventListener('click', ()=>{
-  if(!SESSION) return; if(!confirm('Clear this session? This removes the saved issuance log for this job.')) return;
-  clearLocal(); (BOM[SESSION.unitKey]||[]).forEach(c=> c.Issued=[]); renderTable();
-});
-
-function saveToLocal(){ if(!SESSION) return; const key=`issueLog__${SESSION.jobId}__${SESSION.unitKey}`; localStorage.setItem(key, JSON.stringify(BOM[SESSION.unitKey])); }
-function loadFromLocal(){ if(!SESSION) return; const key=`issueLog__${SESSION.jobId}__${SESSION.unitKey}`; const s=localStorage.getItem(key); if(s){ try{ const arr=JSON.parse(s); (BOM[SESSION.unitKey]||[]).forEach((c,i)=>{ c.Issued = (arr[i]?.Issued)||[]; }); }catch{} } }
-function clearLocal(){ if(!SESSION) return; const key=`issueLog__${SESSION.jobId}__${SESSION.unitKey}`; localStorage.removeItem(key); }
-
-function renderTable(){
-  const tbody = $('bomTable').querySelector('tbody'); tbody.innerHTML='';
-  const list = BOM[SESSION.unitKey] || [];
-  let totalReq=0, totalIssued=0, linesComplete=0;
-  for(const c of list){
-    const issuedQty = c.Issued.length; const rem = Math.max(0, c.QtyReq - issuedQty);
-    totalReq += c.QtyReq; totalIssued += issuedQty; if(rem===0) linesComplete++;
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td><code>${c.ComponentPart}</code></td><td>${c.ComponentRev}</td><td class="qty">${fmt(c.QtyReq)}</td><td class="qty">${fmt(issuedQty)}</td><td class="qty">${fmt(rem)}</td>`;
-    tbody.appendChild(tr);
-  }
-  $('progressSummary').textContent = `${linesComplete}/${list.length} lines complete • Issued ${fmt(totalIssued)} of ${fmt(totalReq)} pcs`;
-}
-
-$('scanInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); const raw=$('scanInput').value.trim(); $('scanInput').value=''; if(raw) handleScan(raw); }});
-
-function parseQR(raw){
-  if(/;/.test(raw) && !/\|/.test(raw)){
-    const p = raw.split(';');
-    return { Part: p[0]||'', Rev: p[1]||'', Lot: p[2]||'', Loc: p[3]||'', Bin: p[4]||'' };
-  }
-  const kv = Object.fromEntries(raw.split('|').map(s=>{ const m=s.split(':'); return [String(m[0]||'').trim().toUpperCase(), (m.slice(1).join(':')||'').trim()]; }));
-  if(kv.P || kv.R || kv.L || kv.LOC || kv.BIN){ return { Part: kv.P||'', Rev: kv.R||'', Lot: kv.L||'', Loc: kv.LOC||'', Bin: kv.BIN||'' }; }
-  return { Part: raw, Rev:'', Lot:'', Loc:'', Bin:'' };
-}
-
-function handleScan(raw){
-  if(!SESSION){ toast('Start a session first', 'warn'); return; }
-  const data = parseQR(raw);
-  const list = BOM[SESSION.unitKey] || [];
-  let cand=null;
-  for(const c of list){
-    const partMatch = String(c.ComponentPart).trim().toUpperCase() === String(data.Part).trim().toUpperCase();
-    const revMatch = !$('enforceRev').checked || (String(c.ComponentRev).trim().toUpperCase() === String(data.Rev).trim().toUpperCase());
-    const remaining = Math.max(0, c.QtyReq - c.Issued.length);
-    if(partMatch && revMatch && (remaining>0 || !$('preventOver').checked)){ cand=c; break; }
-  }
-  if(!cand){
-    const byPart = list.find(c=> String(c.ComponentPart).trim().toUpperCase() === String(data.Part).trim().toUpperCase());
-    if(byPart && $('enforceRev').checked && String(byPart.ComponentRev).trim().toUpperCase() !== String(data.Rev).trim().toUpperCase()){
-      toast(`Rev mismatch for ${data.Part}. Required Rev ${byPart.ComponentRev}, scanned ${data.Rev}.`, 'warn'); return; }
-    if(byPart && $('preventOver').checked && (byPart.Issued.length >= byPart.QtyReq)){
-      toast(`Over‑issue blocked for ${data.Part}. Required ${byPart.QtyReq}, already issued ${byPart.Issued.length}.`, 'warn'); return; }
-    toast(`Part not in BOM or no remaining qty: ${data.Part}`, 'err'); return;
-  }
-  cand.Issued.push({ Part:data.Part, Rev:data.Rev, Lot:data.Lot, Loc:data.Loc, Bin:data.Bin, Time:new Date().toISOString(), Job:SESSION.jobId });
-  saveToLocal(); renderTable(); toast(`Issued ${data.Part} (Rev ${data.Rev||'—'}) to Job ${SESSION.jobId}`,'ok');
-}
-
-// ---------- TRUE iOS SAFE CAMERA ----------
-let scanMode = 'job';
-let zxingReader = null;
-let zxingControls = null;
-let activeStream = null;
-
-const modal = $('camModal');
-const video = $('cam');
-const deviceSel = $('deviceSel');
-const camDiag = $('camDiag');
-
-$('jobCamBtn').addEventListener('click', ()=> openScanner('job'));
-$('partCamBtn').addEventListener('click', ()=> openScanner('part'));
-$('closeCam').addEventListener('click', stopScanner);
-$('switchCam').addEventListener('click', switchCamera);
-
-async function ensureSecure(){
-  if(location.protocol==='https:' || location.hostname==='localhost') return true;
-  $('diag').style.display='block';
-  $('diag').textContent='Camera requires HTTPS.';
-  return false;
+function toast(msg){
+  $('scanMsg').textContent=msg;
+  setTimeout(()=> $('scanMsg').textContent='',2000);
 }
 
 function loadZXing(){
   return new Promise((resolve,reject)=>{
     if(window.ZXing){ resolve(); return; }
-    const script=document.createElement('script');
-    script.src="https://unpkg.com/@zxing/browser@0.1.4/umd/index.min.js";
-    script.onload=resolve;
-    script.onerror=reject;
-    document.body.appendChild(script);
+    const s=document.createElement('script');
+    s.src="https://unpkg.com/@zxing/browser@0.1.4/umd/index.min.js";
+    s.onload=resolve;
+    s.onerror=reject;
+    document.body.appendChild(s);
   });
 }
 
+$('jobCamBtn').onclick=()=>openScanner('job');
+$('partCamBtn').onclick=()=>openScanner('part');
+$('closeCam').onclick=stopScanner;
+
 async function openScanner(mode){
-  scanMode = mode;
+  scanMode=mode;
 
-  if(!(await ensureSecure())) return;
-
-  modal.style.display='flex';
-  camDiag.textContent='Starting camera...';
-
-  await loadZXing();
-
-  if(!zxingReader){
-    zxingReader = new ZXing.BrowserMultiFormatReader();
-  }
-
-  const devices = await navigator.mediaDevices.enumerateDevices();
-  const cameras = devices.filter(d=>d.kind==='videoinput');
-
-  deviceSel.innerHTML='';
-  cameras.forEach((d,i)=>{
-    const opt=document.createElement('option');
-    opt.value=d.deviceId;
-    opt.textContent=d.label || `Camera ${i+1}`;
-    deviceSel.appendChild(opt);
-  });
-
-  const backCam = cameras.find(d =>
-    d.label.toLowerCase().includes('back') ||
-    d.label.toLowerCase().includes('rear')
-  );
-
-  const selected = backCam?.deviceId || cameras[0]?.deviceId;
-
-  if(!selected){
-    camDiag.textContent='No camera found';
+  if(location.protocol!=='https:' && location.hostname!=='localhost'){
+    alert('Camera requires HTTPS.');
     return;
   }
 
-  deviceSel.value = selected;
+  $('camModal').style.display='flex';
 
-  await startCamera(selected);
-}
+  try{
+    // MUST request camera immediately (Safari requirement)
+    const stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'environment'}
+    });
 
-async function startCamera(deviceId){
+    activeStream=stream;
+    const video=$('cam');
+    video.srcObject=stream;
+    video.muted=true;
+    video.setAttribute('playsinline',true);
+    await video.play();
 
-  if(activeStream){
-    activeStream.getTracks().forEach(t=>t.stop());
-    activeStream=null;
-  }
+    await loadZXing();
 
-  if(zxingControls){
-    zxingControls.stop();
-    zxingControls=null;
-  }
-
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video:{
-      deviceId:{ exact:deviceId },
-      facingMode:'environment'
+    if(!zxingReader){
+      zxingReader=new ZXing.BrowserMultiFormatReader();
     }
-  });
 
-  activeStream = stream;
-  video.srcObject = stream;
-
-  video.setAttribute('playsinline', true);
-  video.muted = true;
-
-  await video.play();
-
-  zxingControls = zxingReader.decodeFromVideoElement(
-    video,
-    (result,err)=>{
-      if(result){
-        const text=result.getText();
-        handleDecoded(text);
+    zxingControls=zxingReader.decodeFromVideoElement(
+      video,
+      (result,err)=>{
+        if(result){
+          handleDecoded(result.getText());
+        }
       }
-    }
-  );
+    );
 
-  camDiag.textContent='Camera active';
-}
-
-async function switchCamera(){
-  const opts = Array.from(deviceSel.options);
-  if(!opts.length) return;
-  const next=(deviceSel.selectedIndex+1)%opts.length;
-  deviceSel.selectedIndex=next;
-  await startCamera(deviceSel.value);
+  }catch(e){
+    console.error(e);
+    alert('Camera permission denied or blocked.');
+  }
 }
 
 function stopScanner(){
-  modal.style.display='none';
+  $('camModal').style.display='none';
 
   if(zxingControls){
     zxingControls.stop();
@@ -406,79 +136,9 @@ function handleDecoded(text){
   if(scanMode==='job'){
     $('jobInput').value=text;
   }else{
-    handleScan(text);
+    toast("Scanned: "+text);
   }
 }
-
-addEventListener('click', e=>{
-  if(e.target===modal) stopScanner();
-});
-
-function onDecoded(text){
-  stopScanner();
-  if(scanMode==='job'){
-    $('jobInput').value = text;
-  } else {
-    handleScan(text);
-  }
-}
-
-addEventListener('click', (e)=>{
-  if(e.target===modal) stopScanner();
-});
-
-function pollNative(){
-  const tick = async ()=>{
-    if(modal.style.display==='none' || usingZXing) return; // stopped or switched
-    try{
-      const codes = await detector.detect(video);
-      if(codes && codes.length){
-        const txt = codes[0].rawValue || codes[0].rawValue; onDecoded(txt);
-        return; // close on first
-      }
-    }catch(e){ /* ignore frame errors */ }
-    requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
-}
-
-async function startZXing(deviceId){
-  usingZXing = true; detector=null;
-  if(!zxingLib){
-    // dynamic import from UNPKG
-    zxingLib = await import('https://unpkg.com/@zxing/browser@latest');
-  }
-  if(zxingControls){ zxingControls.stop(); zxingControls = null; }
-  if(!zxingReader){ zxingReader = new zxingLib.BrowserMultiFormatReader(); }
-  // list devices
-  const devices = await zxingLib.BrowserCodeReader.listVideoInputDevices();
-  deviceSel.innerHTML=''; devices.forEach((d,i)=>{ const opt=document.createElement('option'); opt.value=d.deviceId; opt.textContent=d.label||`Camera ${i+1}`; deviceSel.appendChild(opt); });
-  let selId = deviceId || (devices[0] && devices[0].deviceId) || null;
-  if(selId){ deviceSel.value = selId; }
-  // attach video element
-  zxingControls = await zxingReader.decodeFromVideoDevice(selId, video, (result, err, controls)=>{
-    if(result){ onDecoded(result.getText ? result.getText() : result.text || String(result)); }
-  });
-  camDiag.textContent = `ZXing active (${devices.length||0} cameras)`;
-}
-
-function stopScanner(){
-  modal.style.display='none';
-  if(zxingControls){ try{ zxingControls.stop(); }catch{} zxingControls=null; }
-  if(currentStream){ currentStream.getTracks().forEach(t=>t.stop()); currentStream=null; }
-}
-
-function onDecoded(text){
-  if(scanMode==='job'){
-    $('jobInput').value = text; stopScanner();
-  } else {
-    stopScanner(); handleScan(text);
-  }
-}
-
-addEventListener('click', (e)=>{
-  if(e.target===modal) stopScanner();
-});
 </script>
 </body>
 </html>
