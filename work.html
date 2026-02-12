@@ -1339,7 +1339,6 @@ currentBOM.forEach(part => {
 const key = `${part.partNumber}-${part.revision}`;
 const issued = issuedParts[key] || [];
 
-```
 issued.forEach((scan, idx) => {
   pickedParts.push({
     ...part,
@@ -1347,7 +1346,6 @@ issued.forEach((scan, idx) => {
     ...scan
   });
 });
-```
 
 });
 
@@ -1511,7 +1509,7 @@ printReport(html, `Complete_Pick_${currentJob}_${Date.now()}`);
 
 function printReport(htmlContent, filename) {
 // Open print window
-const printWindow = window.open(’’, ‘_blank’);
+const printWindow = window.open('', ‘_blank');
 printWindow.document.write(htmlContent);
 printWindow.document.close();
 
@@ -1522,13 +1520,13 @@ printWindow.print();
 }, 250);
 };
 
-showToast(‘Report generated - check print dialog’, ‘success’);
+showToast(‘Report generated - check print dialog', ‘success');
 
-// Don’t auto-reset after partial pick, do reset after complete pick
-const isComplete = htmlContent.includes(‘COMPLETE PICK REPORT’);
+// Don't auto-reset after partial pick, do reset after complete pick
+const isComplete = htmlContent.includes(‘COMPLETE PICK REPORT');
 if(isComplete) {
 setTimeout(() => {
-if(confirm(‘Pick complete! Reset for next job?’)) {
+if(confirm(‘Pick complete! Reset for next job?')) {
 resetJob();
 }
 }, 1000);
@@ -1536,7 +1534,7 @@ resetJob();
 }
 
 // Prevent double-tap zoom
-document.addEventListener(‘dblclick’, (e) => {
+document.addEventListener(‘dblclick', (e) => {
 e.preventDefault();
 }, { passive: false });
 </script>
