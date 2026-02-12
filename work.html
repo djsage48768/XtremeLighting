@@ -710,14 +710,29 @@ let html5QrcodeScanner = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('App initialized');
+  console.log('Html5Qrcode available:', typeof Html5Qrcode !== 'undefined');
+  console.log('QRCode available:', typeof QRCode !== 'undefined');
+  
   $('assemblySelect').addEventListener('change', onAssemblyChange);
   $('jobInput').addEventListener('input', onJobInput);
-  $('jobScanBtn').addEventListener('click', () => openScanner('job'));
-  $('resumeBtn').addEventListener('click', () => openScanner('resume'));
-  $('partScanBtn').addEventListener('click', () => openScanner('part'));
+  $('jobScanBtn').addEventListener('click', () => {
+    console.log('Job scan button clicked');
+    openScanner('job');
+  });
+  $('resumeBtn').addEventListener('click', () => {
+    console.log('Resume button clicked');
+    openScanner('resume');
+  });
+  $('partScanBtn').addEventListener('click', () => {
+    console.log('Part scan button clicked');
+    openScanner('part');
+  });
   $('closeScanner').addEventListener('click', closeScanner);
   $('resetBtn').addEventListener('click', resetJob);
   $('completeBtn').addEventListener('click', completeJob);
+  
+  console.log('Event listeners attached');
 });
 
 function onAssemblyChange(e) {
@@ -860,6 +875,12 @@ function openScanner(mode) {
     return;
   }
   
+  // Check if Html5Qrcode is loaded
+  if(typeof Html5Qrcode === 'undefined') {
+    showToast('Scanner library not loaded. Please refresh the page.', 'error');
+    return;
+  }
+  
   $('scanModal').classList.add('show');
   
   try {
@@ -868,39 +889,53 @@ function openScanner(mode) {
     const config = {
       fps: 10,
       qrbox: { width: 250, height: 250 },
-      aspectRatio: 1.0
+      aspectRatio: 1.0,
+      disableFlip: false
     };
     
     html5QrcodeScanner.start(
       { facingMode: "environment" },
       config,
-      (decodedText) => handleScan(decodedText),
-      () => {} // Ignore errors during scanning
+      (decodedText) => {
+        handleScan(decodedText);
+      },
+      (errorMessage) => {
+        // Ignore - these fire constantly during scanning
+      }
     ).catch(err => {
       console.error("Scanner error:", err);
       closeScanner();
-      showToast('Failed to start camera', 'error');
+      
+      let msg = 'Failed to start camera';
+      if(err.toString().includes('NotAllowedError') || err.name === 'NotAllowedError') {
+        msg = 'Camera permission denied. Enable in Settings > Safari > Camera';
+      } else if(err.toString().includes('NotFoundError') || err.name === 'NotFoundError') {
+        msg = 'No camera found on device';
+      } else if(err.toString().includes('NotReadableError') || err.name === 'NotReadableError') {
+        msg = 'Camera is in use by another app';
+      }
+      
+      showToast(msg, 'error');
     });
     
   } catch(err) {
     console.error("Scanner init error:", err);
     closeScanner();
-    showToast('Scanner initialization failed', 'error');
+    showToast('Scanner initialization failed: ' + err.message, 'error');
   }
 }
 
 function closeScanner() {
+  $('scanModal').classList.remove('show');
+  
   if(html5QrcodeScanner) {
     html5QrcodeScanner.stop().then(() => {
       html5QrcodeScanner.clear();
       html5QrcodeScanner = null;
-      $('scanModal').classList.remove('show');
-    }).catch(() => {
+    }).catch((err) => {
+      console.log('Stop error (expected):', err);
       html5QrcodeScanner = null;
-      $('scanModal').classList.remove('show');
     });
-  } else {
-    $('scanModal').classList.remove('show');
   }
 }
 
