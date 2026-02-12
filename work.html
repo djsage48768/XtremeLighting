@@ -434,6 +434,10 @@ button:disabled{
 <span>Scan Job QR Code</span>
 </button>
 
+  <button id="resumeBtn" class="scan-btn btn-secondary" style="margin-top:-8px;">
+    <span>🔄</span>
+    <span>Resume Partial Pick</span>
+  </button>
 </div>
 
 <div class="card" id="partsCard" style="display:none;">
@@ -475,6 +479,8 @@ button:disabled{
 </div>
 
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
 <script>
 const $ = id => document.getElementById(id);
@@ -707,6 +713,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('assemblySelect').addEventListener('change', onAssemblyChange);
   $('jobInput').addEventListener('input', onJobInput);
   $('jobScanBtn').addEventListener('click', () => openScanner('job'));
+  $('resumeBtn').addEventListener('click', () => openScanner('resume'));
   $('partScanBtn').addEventListener('click', () => openScanner('part'));
   $('closeScanner').addEventListener('click', closeScanner);
   $('resetBtn').addEventListener('click', resetJob);
@@ -791,8 +798,18 @@ function updateProgress() {
   $('progressStats').textContent = `${totalIssued} of ${totalRequired}`;
   $('progressBar').style.width = `${percentComplete}%`;
   
-  // Enable complete button if all parts issued
-  $('completeBtn').disabled = percentComplete < 100;
+  // Enable complete button if any parts issued
+  const hasIssuedParts = totalIssued > 0;
+  $('completeBtn').disabled = !hasIssuedParts;
+  
+  // Update button text based on completion
+  if(percentComplete >= 100) {
+    $('completeBtn').innerHTML = '<span>✓</span><span>Complete Pick</span>';
+  } else if(hasIssuedParts) {
+    $('completeBtn').innerHTML = '<span>📋</span><span>Partial Pick</span>';
+  } else {
+    $('completeBtn').innerHTML = '<span>📋</span><span>Complete Pick</span>';
+  }
   
   // Update scanned parts display
   updateScannedPartsDisplay();
@@ -818,11 +835,16 @@ function updateScannedPartsDisplay() {
   }
   
   const html = scanned.slice(0, 5).map(scan => {
-    const [partNumber, revision] = scan.key.split('-');
+    const [partNumber, bomRevision] = scan.key.split('-');
+    const revMatch = scan.scannedRevision === scan.bomRevision;
+    const revDisplay = revMatch 
+      ? `REV ${scan.scannedRevision}` 
+      : `REV ${scan.scannedRevision} <span style="color:#ff8c00;">(BOM: ${scan.bomRevision})</span>`;
+    
     return `
       <div class="scanned-item">
-        <strong>${partNumber} REV ${revision}</strong>
-        <span>Lot: ${scan.lot || 'N/A'} | Loc: ${scan.location || 'N/A'} | Bin: ${scan.bin || 'N/A'}</span>
+        <strong>${partNumber} ${revDisplay}</strong>
+        <span>Lot: ${scan.lot || 'N/A'} | Bin: ${scan.bin || 'N/A'} | Loc: ${scan.location || 'N/A'}</span>
       </div>
     `;
   }).join('');
@@ -894,8 +916,45 @@ function handleScan(qrData) {
     currentJob = qrData;
     showToast('Job scanned: ' + qrData, 'success');
     checkReadyState();
+  } else if(scannerMode === 'resume') {
+    loadResumeData(qrData);
   } else {
     processPartScan(qrData);
+  }
+}
+
+function loadResumeData(qrData) {
+  try {
+    const resumeData = JSON.parse(qrData);
+    
+    // Validate resume data
+    if(!resumeData.assembly || !resumeData.job || !resumeData.issuedParts) {
+      showToast('Invalid resume QR code', 'error');
+      return;
+    }
+    
+    // Load the data
+    currentAssembly = resumeData.assembly;
+    currentJob = resumeData.job;
+    issuedParts = resumeData.issuedParts;
+    
+    // Set UI values
+    $('assemblySelect').value = currentAssembly;
+    $('jobInput').value = currentJob;
+    
+    // Load BOM
+    if(BOM_DATA[currentAssembly]) {
+      currentBOM = BOM_DATA[currentAssembly];
+      initializeJob();
+      showToast('✓ Partial pick resumed!', 'success');
+    } else {
+      showToast('Assembly not found in system', 'error');
+      resetJob();
+    }
+    
+  } catch(e) {
+    console.error('Resume parse error:', e);
+    showToast('Failed to load resume data', 'error');
   }
 }
 
@@ -910,18 +969,18 @@ function processPartScan(qrData) {
     return;
   }
   
-  const [partNumber, revision, lot = '', bin = '', location = ''] = parts;
-  const key = `${partNumber}-${revision}`;
+  const [partNumber, scannedRevision, lot = '', bin = '', location = ''] = parts;
   
-  // Find this part in the BOM
-  const bomPart = currentBOM.find(p => 
-    p.partNumber === partNumber && p.revision === revision
-  );
+  // Find this part in the BOM by part number (flexible on revision)
+  const bomPart = currentBOM.find(p => p.partNumber === partNumber);
   
   if(!bomPart) {
-    showToast(`Part ${partNumber} REV ${revision} not in BOM`, 'error');
+    showToast(`Part ${partNumber} not in BOM`, 'error');
     return;
   }
+  
+  // Use BOM part's key but track actual scanned revision
+  const key = `${bomPart.partNumber}-${bomPart.revision}`;
   
   // Check if already have enough
   if(!issuedParts[key]) {
@@ -933,8 +992,10 @@ function processPartScan(qrData) {
     return;
   }
   
-  // Add the part
+  // Add the part with actual scanned revision
   issuedParts[key].push({
+    scannedRevision,
+    bomRevision: bomPart.revision,
     lot,
     location,
     bin,
@@ -943,8 +1004,11 @@ function processPartScan(qrData) {
   
   const remaining = bomPart.qtyRequired - issuedParts[key].length;
   
+  // Show revision info if different
+  const revInfo = scannedRevision !== bomPart.revision ? ` (REV ${scannedRevision}, BOM calls for ${bomPart.revision})` : '';
+  
   if(remaining > 0) {
-    showToast(`✓ ${partNumber} scanned (${remaining} more needed)`, 'success');
+    showToast(`✓ ${partNumber}${revInfo} scanned (${remaining} more needed)`, 'success');
   } else {
     showToast(`✓ ${partNumber} complete!`, 'success');
   }
@@ -983,47 +1047,446 @@ function resetJob() {
 }
 
 function completeJob() {
-  // Check if all parts issued
-  let allComplete = true;
+  // Check completion status
+  let totalRequired = 0;
+  let totalIssued = 0;
+  let missingParts = [];
+  
   currentBOM.forEach(part => {
     const key = `${part.partNumber}-${part.revision}`;
     const issued = issuedParts[key] || [];
-    if(issued.length < part.qtyRequired) {
-      allComplete = false;
+    const qtyIssued = issued.length;
+    const qtyNeeded = part.qtyRequired - qtyIssued;
+    
+    totalRequired += part.qtyRequired;
+    totalIssued += qtyIssued;
+    
+    if(qtyNeeded > 0) {
+      missingParts.push({
+        ...part,
+        qtyIssued,
+        qtyNeeded
+      });
     }
   });
   
-  if(!allComplete) {
-    showToast('Not all parts have been issued', 'error');
-    return;
-  }
+  const isPartialPick = missingParts.length > 0;
   
-  // Generate completion report
-  const report = {
+  if(isPartialPick) {
+    generatePartialPickReport(missingParts, totalIssued, totalRequired);
+  } else {
+    generateCompletePickReport();
+  }
+}
+
+async function generatePartialPickReport(missingParts, totalIssued, totalRequired) {
+  // Create resume data for QR code
+  const resumeData = {
     assembly: currentAssembly,
     job: currentJob,
-    completedAt: new Date().toISOString(),
-    parts: issuedParts
+    issuedParts: issuedParts,
+    timestamp: Date.now()
   };
   
-  // Download as JSON
-  const blob = new Blob([JSON.stringify(report, null, 2)], {type: 'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `Job_${currentJob}_${currentAssembly.replace(/\s+/g, '_')}_${Date.now()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
+  const resumeString = JSON.stringify(resumeData);
   
-  showToast('Job completed! Report downloaded.', 'success');
+  // Generate QR code as data URL
+  let qrDataUrl = '';
+  try {
+    qrDataUrl = await QRCode.toDataURL(resumeString, {
+      width: 300,
+      margin: 1
+    });
+  } catch(e) {
+    console.error('QR generation error:', e);
+  }
   
-  // Reset after 2 seconds
-  setTimeout(resetJob, 2000);
+  // Generate HTML report
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Partial Pick Report - ${currentJob}</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      padding: 20px; 
+      max-width: 800px; 
+      margin: 0 auto;
+    }
+    .header {
+      border-bottom: 3px solid #0f6cbd;
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      margin: 0;
+      color: #0f6cbd;
+      font-size: 24px;
+    }
+    .header .subtitle {
+      color: #666;
+      margin-top: 5px;
+      font-size: 14px;
+    }
+    .info-box {
+      background: #f7f7f7;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+    }
+    .info-label {
+      font-weight: bold;
+      color: #333;
+    }
+    .status-warning {
+      background: #fff3cd;
+      border-left: 4px solid #ff8c00;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+    .status-warning h3 {
+      margin: 0 0 10px 0;
+      color: #ff8c00;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    th {
+      background: #0f6cbd;
+      color: white;
+      padding: 10px;
+      text-align: left;
+      font-weight: 600;
+    }
+    td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+    tr:hover {
+      background: #f9f9f9;
+    }
+    .part-number {
+      font-family: monospace;
+      font-weight: bold;
+    }
+    .qr-section {
+      margin-top: 30px;
+      padding: 20px;
+      border: 2px dashed #0f6cbd;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .qr-section h3 {
+      margin-top: 0;
+      color: #0f6cbd;
+    }
+    .qr-section img {
+      border: 1px solid #ddd;
+      padding: 10px;
+      background: white;
+    }
+    .qr-instructions {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #666;
+    }
+    @media print {
+      .no-print { display: none; }
+    }
+  </style>
+
+</head>
+<body>
+  <div class="header">
+    <h1>⚠️ PARTIAL PICK REPORT</h1>
+    <div class="subtitle">Some parts are still missing</div>
+  </div>
+
+  <div class="info-box">
+    <div class="info-row">
+      <span class="info-label">Assembly:</span>
+      <span>${currentAssembly}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Job Number:</span>
+      <span>${currentJob}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Date:</span>
+      <span>${new Date().toLocaleString()}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Progress:</span>
+      <span>${totalIssued} of ${totalRequired} parts picked (${Math.round(totalIssued/totalRequired*100)}%)</span>
+    </div>
+  </div>
+
+  <div class="status-warning">
+    <h3>Missing Parts (${missingParts.length})</h3>
+    <p>The following parts still need to be picked to complete this job:</p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Part Number</th>
+        <th>Rev</th>
+        <th>Description</th>
+        <th>Picked</th>
+        <th>Needed</th>
+        <th>Still Required</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${missingParts.map(part => `
+        <tr>
+          <td class="part-number">${part.partNumber}</td>
+          <td>${part.revision}</td>
+          <td>${part.description}</td>
+          <td>${part.qtyIssued}</td>
+          <td>${part.qtyRequired}</td>
+          <td style="font-weight:bold; color:#d13438;">${part.qtyNeeded}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+
+  <div class="qr-section">
+    <h3>Resume This Pick Later</h3>
+    <img src="${qrDataUrl}" alt="Resume QR Code" />
+    <div class="qr-instructions">
+      <strong>Scan this QR code</strong> to resume picking where you left off.<br>
+      This will reload your progress and show only the remaining parts.
+    </div>
+  </div>
+
+  <div style="margin-top: 30px; text-align: center; color: #999; font-size: 12px;">
+    Generated by Parts Issuance System
+  </div>
+</body>
+</html>
+  `;
+
+printReport(html, `Partial_Pick_${currentJob}_${Date.now()}`);
+}
+
+function generateCompletePickReport() {
+// Build picked parts list
+const pickedParts = [];
+
+currentBOM.forEach(part => {
+const key = `${part.partNumber}-${part.revision}`;
+const issued = issuedParts[key] || [];
+
+```
+issued.forEach((scan, idx) => {
+  pickedParts.push({
+    ...part,
+    scanNumber: idx + 1,
+    ...scan
+  });
+});
+```
+
+});
+
+const html = `
+
+<!DOCTYPE html>
+
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Complete Pick Report - ${currentJob}</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      padding: 20px; 
+      max-width: 900px; 
+      margin: 0 auto;
+    }
+    .header {
+      border-bottom: 3px solid #107c10;
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      margin: 0;
+      color: #107c10;
+      font-size: 24px;
+    }
+    .header .subtitle {
+      color: #666;
+      margin-top: 5px;
+      font-size: 14px;
+    }
+    .info-box {
+      background: #f7f7f7;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+    }
+    .info-label {
+      font-weight: bold;
+      color: #333;
+    }
+    .status-success {
+      background: #e8f5e9;
+      border-left: 4px solid #107c10;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+    .status-success h3 {
+      margin: 0 0 10px 0;
+      color: #107c10;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 12px;
+    }
+    th {
+      background: #107c10;
+      color: white;
+      padding: 8px;
+      text-align: left;
+      font-weight: 600;
+    }
+    td {
+      padding: 8px;
+      border-bottom: 1px solid #ddd;
+    }
+    tr:hover {
+      background: #f9f9f9;
+    }
+    .part-number {
+      font-family: monospace;
+      font-weight: bold;
+    }
+    .rev-mismatch {
+      color: #ff8c00;
+      font-weight: bold;
+    }
+    @media print {
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>✅ COMPLETE PICK REPORT</h1>
+    <div class="subtitle">All parts successfully picked</div>
+  </div>
+
+  <div class="info-box">
+    <div class="info-row">
+      <span class="info-label">Assembly:</span>
+      <span>${currentAssembly}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Job Number:</span>
+      <span>${currentJob}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Date:</span>
+      <span>${new Date().toLocaleString()}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Total Parts:</span>
+      <span>${pickedParts.length} parts</span>
+    </div>
+  </div>
+
+  <div class="status-success">
+    <h3>✓ Pick Complete</h3>
+    <p>All required parts have been successfully picked and issued to this job.</p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Part Number</th>
+        <th>BOM Rev</th>
+        <th>Scanned Rev</th>
+        <th>Description</th>
+        <th>Lot</th>
+        <th>Bin</th>
+        <th>Location</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${pickedParts.map(part => {
+        const revMismatch = part.scannedRevision !== part.bomRevision;
+        return `
+        <tr>
+          <td class="part-number">${part.partNumber}</td>
+          <td>${part.bomRevision}</td>
+          <td class="${revMismatch ? 'rev-mismatch' : ''}">${part.scannedRevision}${revMismatch ? ' ⚠️' : ''}</td>
+          <td>${part.description}</td>
+          <td>${part.lot || 'N/A'}</td>
+          <td>${part.bin || 'N/A'}</td>
+          <td>${part.location || 'N/A'}</td>
+        </tr>
+      `}).join('')}
+    </tbody>
+  </table>
+
+  <div style="margin-top: 30px; text-align: center; color: #999; font-size: 12px;">
+    Generated by Parts Issuance System
+  </div>
+</body>
+</html>
+  `;
+
+printReport(html, `Complete_Pick_${currentJob}_${Date.now()}`);
+}
+
+function printReport(htmlContent, filename) {
+// Open print window
+const printWindow = window.open(’’, ‘_blank’);
+printWindow.document.write(htmlContent);
+printWindow.document.close();
+
+// Wait for content to load then print
+printWindow.onload = function() {
+setTimeout(() => {
+printWindow.print();
+}, 250);
+};
+
+showToast(‘Report generated - check print dialog’, ‘success’);
+
+// Don’t auto-reset after partial pick, do reset after complete pick
+const isComplete = htmlContent.includes(‘COMPLETE PICK REPORT’);
+if(isComplete) {
+setTimeout(() => {
+if(confirm(‘Pick complete! Reset for next job?’)) {
+resetJob();
+}
+}, 1000);
+}
 }
 
 // Prevent double-tap zoom
-document.addEventListener('dblclick', (e) => {
-  e.preventDefault();
+document.addEventListener(‘dblclick’, (e) => {
+e.preventDefault();
 }, { passive: false });
 </script>
 
