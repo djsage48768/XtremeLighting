@@ -480,7 +480,7 @@ button:disabled{
 
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <script>
 const $ = id => document.getElementById(id);
@@ -1125,15 +1125,31 @@ async function generatePartialPickReport(missingParts, totalIssued, totalRequire
   
   const resumeString = JSON.stringify(resumeData);
   
-  // Generate QR code as data URL
+  // Generate QR code as data URL using QRCode.js
   let qrDataUrl = '';
   try {
-    qrDataUrl = await QRCode.toDataURL(resumeString, {
+    // Create temporary container
+    const tempDiv = document.createElement('div');
+    const qr = new QRCode(tempDiv, {
+      text: resumeString,
       width: 300,
-      margin: 1
+      height: 300,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.L
     });
+    
+    // Wait a bit for QR to render
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Get the canvas and convert to data URL
+    const canvas = tempDiv.querySelector('canvas');
+    if(canvas) {
+      qrDataUrl = canvas.toDataURL('image/png');
+    }
   } catch(e) {
     console.error('QR generation error:', e);
+    qrDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
   }
   
   // Generate HTML report
