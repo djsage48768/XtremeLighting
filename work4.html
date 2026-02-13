@@ -611,8 +611,10 @@ function checkReadyState(){
     initializeJob();
   }
 }
-function initializeJob(){
-  issuedParts = {}; // reset picks for new combo
+function initializeJob(opts = {}){
+  if(!opts.preserveIssued){
+    issuedParts = {}; // reset picks for new combo
+  }
   $('partsCard').style.display = 'block';
   $('bottomActions').style.display = 'flex';
   renderPartsList();
@@ -754,7 +756,7 @@ function loadResumeData(qrData){
       showToast('Invalid resume QR code','error'); return;
     }
     $('assemblySelect').value=currentAssembly; $('jobInput').value=currentJob;
-    if(BOM_DATA[currentAssembly]){ currentBOM=BOM_DATA[currentAssembly]; initializeJob(); showToast('✓ Partial pick resumed!','success'); }
+    if(BOM_DATA[currentAssembly]){ currentBOM=BOM_DATA[currentAssembly]; initializeJob({preserveIssued:true}); showToast('✓ Partial pick resumed!','success'); }
     else{ showToast('Assembly not found in system','error'); resetJob(); }
   }catch(e){
     console.error(e); showToast('Failed to load resume data','error');
@@ -1074,7 +1076,6 @@ async function generatePicklistReport(isPartial, missingParts, totalIssued, tota
     <div style="margin-top:12px; padding:10px; border:1px dashed #777;">
       <b>Partial Pick Summary</b><br>
       Progress: ${formatQty(totalIssued)} / ${formatQty(totalRequired)} parts (${pctPicked}%)<br>
-      ${qrDataUrl ? `<img src="${qrDataUrl}" style="margin-top:10px; width:200px;">` : ''}
     </div>
   ` : `
     <div style="margin-top:12px; padding:10px; background:#e8f5e9; border:1px solid #cfe8cf;">
