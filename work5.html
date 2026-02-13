@@ -1367,10 +1367,10 @@ function handleErpFileSelected(e){
 }
 
 function parseErpPicklistCsv(text){
-  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-  if(lines.length < 2) throw new Error("CSV appears empty");
+  const rows = parseCsvRows(text);
+  if(rows.length < 2) throw new Error("CSV appears empty");
 
-  const headers = splitCsvLine(lines[0]).map(h => h.trim().toLowerCase());
+  const headers = rows[0].map(h => String(h || '').replace(/^\uFEFF/, '').trim().toLowerCase());
   const idxJob = headers.indexOf("fjobno");
   const idxAsm = headers.indexOf("fpartno");
   const idxAsmRev = headers.indexOf("fpartrev");
@@ -1388,22 +1388,22 @@ function parseErpPicklistCsv(text){
   let job = "";
   let assembly = "";
 
-  for(let i=1;i<lines.length;i++){
-    const cols = splitCsvLine(lines[i]);
+  for(let i=1;i<rows.length;i++){
+    const cols = rows[i];
     if(cols.length < headers.length) continue;
 
-    if(!job && idxJob >= 0) job = (cols[idxJob] || '').trim();
+    if(!job && idxJob >= 0) job = (cols[idxJob] || '').toString().trim();
     if(!assembly && idxAsm >= 0){
-      const pn = (cols[idxAsm] || '').trim();
-      const rev = idxAsmRev >= 0 ? (cols[idxAsmRev] || '').trim() : '';
+      const pn = (cols[idxAsm] || '').toString().trim();
+      const rev = idxAsmRev >= 0 ? (cols[idxAsmRev] || '').toString().trim() : '';
       if(pn) assembly = rev ? `${pn} REV ${rev}` : pn;
     }
 
-    const partNumber = (cols[idxPart] || '').trim();
-    const revision = (cols[idxRev] || '').trim();
-    const description = (cols[idxDesc] || '').trim();
-    const uom = (cols[idxUom] || '').trim();
-    const qty = parseFloat((cols[idxQty] || '').trim());
+    const partNumber = (cols[idxPart] || '').toString().trim();
+    const revision = (cols[idxRev] || '').toString().trim();
+    const description = (cols[idxDesc] || '').toString().trim();
+    const uom = (cols[idxUom] || '').toString().trim();
+    const qty = parseFloat((cols[idxQty] || '').toString().trim());
     if(!partNumber || !revision || !uom || isNaN(qty)) continue;
 
     const key = `${partNumber}||${revision}||${uom}`;
@@ -1498,6 +1498,37 @@ function splitCsvLine(line){
   }
   out.push(cur);
   return out;
+}
+
+function parseCsvRows(text){
+  const rows = [];
+  let row = [];
+  let cur = "";
+  let q = false;
+
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(c === '"'){
+      if(q && text[i+1] === '"'){ cur += '"'; i++; }
+      else q = !q;
+    }else if(c === ',' && !q){
+      row.push(cur);
+      cur = "";
+    }else if((c === '\n' || c === '\r') && !q){
+      if(c === '\r' && text[i+1] === '\n') i++;
+      row.push(cur);
+      cur = "";
+      if(row.some(v => String(v).trim().length > 0)) rows.push(row);
+      row = [];
+    }else{
+      cur += c;
+    }
+  }
+  if(cur.length > 0 || row.length > 0){
+    row.push(cur);
+    if(row.some(v => String(v).trim().length > 0)) rows.push(row);
+  }
+  return rows;
 }
 
 function normalizePartsArray(arr){
