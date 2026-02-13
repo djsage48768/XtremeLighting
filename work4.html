@@ -741,12 +741,18 @@ function handleScan(qrData){
 function loadResumeData(qrData){
   try{
     const resumeData = JSON.parse(qrData);
-    if(!resumeData.assembly || !resumeData.job || !resumeData.issuedParts){
+    if((!resumeData.assembly && !resumeData.a) || (!resumeData.job && !resumeData.j)){
       showToast('Invalid resume QR code','error'); return;
     }
-    currentAssembly = resumeData.assembly;
-    currentJob = resumeData.job;
-    issuedParts = resumeData.issuedParts;
+    currentAssembly = resumeData.assembly || resumeData.a;
+    currentJob = resumeData.job || resumeData.j;
+    if(resumeData.issuedParts){
+      issuedParts = resumeData.issuedParts;
+    }else if(resumeData.p){
+      issuedParts = decodeIssuedParts(resumeData.p);
+    }else{
+      showToast('Invalid resume QR code','error'); return;
+    }
     $('assemblySelect').value=currentAssembly; $('jobInput').value=currentJob;
     if(BOM_DATA[currentAssembly]){ currentBOM=BOM_DATA[currentAssembly]; initializeJob(); showToast('✓ Partial pick resumed!','success'); }
     else{ showToast('Assembly not found in system','error'); resetJob(); }
@@ -841,12 +847,48 @@ function showToast(message, type='info'){
 /* ============================================================
    Resume QR
    ============================================================ */
+function encodeIssuedParts(){
+  return Object.entries(issuedParts).map(([key, scans]) => [
+    key,
+    (scans || []).map(s => [
+      s.scannedRevision || '',
+      s.bomRevision || '',
+      s.lot || '',
+      s.bin || '',
+      s.location || '',
+      s.serial || '',
+      s.ep ? 1 : 0,
+      s.qty ?? 1,
+      s.scannedAt || 0
+    ])
+  ]);
+}
+function decodeIssuedParts(packed){
+  const out = {};
+  (packed || []).forEach(entry => {
+    const key = entry[0];
+    const scans = entry[1] || [];
+    out[key] = scans.map(s => ({
+      scannedRevision: s[0],
+      bomRevision: s[1],
+      lot: s[2],
+      bin: s[3],
+      location: s[4],
+      serial: s[5],
+      ep: !!s[6],
+      qty: s[7],
+      scannedAt: s[8]
+    }));
+  });
+  return out;
+}
 function buildResumeData(){
   return {
-    assembly: currentAssembly,
-    job: currentJob,
-    issuedParts: issuedParts,
-    timestamp: Date.now()
+    v: 2,
+    a: currentAssembly,
+    j: currentJob,
+    p: encodeIssuedParts(),
+    t: Date.now()
   };
 }
 function updateResumeQr(){
@@ -933,6 +975,7 @@ function computePickStats(){
    ============================================================ */
 async function generatePicklistReport(isPartial, missingParts, totalIssued, totalRequired){
   let qrDataUrl = '';
+  const reportWindow = window.open('', '_blank');
 
   // Build resume QR for report
   try{
@@ -1144,16 +1187,17 @@ async function generatePicklistReport(isPartial, missingParts, totalIssued, tota
 </html>
   `;
 
-  printReport(html);
+  printReport(html, reportWindow);
 }
 
 /* ============================================================
    Report printing helper
    ============================================================ */
-function printReport(html){
-  const w = window.open('', '_blank');
-  w.document.write(html);
-  w.document.close();
+function printReport(html, w){
+  const win = w || window.open('', '_blank');
+  if(!win) return;
+  win.document.write(html);
+  win.document.close();
 }
 
 /* ============================================================
