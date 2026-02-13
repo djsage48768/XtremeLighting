@@ -976,6 +976,8 @@ function computePickStats(){
 async function generatePicklistReport(isPartial, missingParts, totalIssued, totalRequired){
   let qrDataUrl = '';
   const reportWindow = window.open('', '_blank');
+  const dateStr = new Date().toLocaleDateString();
+  const timeStr = new Date().toLocaleTimeString();
 
   // Build resume QR for report
   try{
@@ -1065,9 +1067,6 @@ async function generatePicklistReport(isPartial, missingParts, totalIssued, tota
   const parts = currentAssembly.split(" REV ");
   const assemblyPN = parts[0] || '';
   const assemblyRev = parts[1] || '';
-
-  const dateStr = new Date().toLocaleDateString();
-  const timeStr = new Date().toLocaleTimeString();
 
   // Partial block
   const pctPicked = totalRequired ? Math.round((totalIssued/totalRequired)*100) : 0;
