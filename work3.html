@@ -530,7 +530,10 @@ document.addEventListener('DOMContentLoaded', () => {
   $('completeBtn').addEventListener('click', completeJob);
 
   // Add-ons
-  $('pickedReportBtn').addEventListener('click', () => generatePicklistReport(false));
+  $('pickedReportBtn').addEventListener('click', () => {
+    const stats = computePickStats();
+    generatePicklistReport(stats.isPartial, stats.missingParts, stats.totalIssued, stats.totalRequired);
+  });
   $('exportCsvBtn').addEventListener('click', exportPickedToCSV);
   $('uploadBomBtn').addEventListener('click', () => $('bomFileInput').click());
   $('bomFileInput').addEventListener('change', handleBomFileSelected);
@@ -774,6 +777,11 @@ function resetJob(){
 }
 
 function completeJob(){
+  const stats = computePickStats();
+  generatePicklistReport(stats.isPartial, stats.missingParts, stats.totalIssued, stats.totalRequired);
+}
+
+function computePickStats(){
   let totalRequired = 0;
   let totalIssued = 0;
   let missingParts = [];
@@ -795,8 +803,12 @@ function completeJob(){
     }
   });
 
-  const isPartial = missingParts.length > 0;
-  generatePicklistReport(isPartial, missingParts, totalIssued, totalRequired);
+  return {
+    totalRequired,
+    totalIssued,
+    missingParts,
+    isPartial: missingParts.length > 0
+  };
 }
 
 /* ============================================================
@@ -992,7 +1004,7 @@ async function generatePicklistReport(isPartial, missingParts, totalIssued, tota
     </div>
   </div>
 
-  <script>window.onload = ()=>window.print();</script>
+  <script>window.onload = ()=>window.print();<\/script>
 </body>
 </html>
   `;
