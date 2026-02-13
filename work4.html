@@ -1,0 +1,1346 @@
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
+  />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Issue Parts to Job - QR Scan</title>
+
+  <style>
+    :root{
+      --primary:#0f6cbd;
+      --ok:#107c10;
+      --warn:#ff8c00;
+      --err:#d13438;
+      --bg:#f7f7f7;
+      --card:#fff;
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+      background:var(--bg);
+      -webkit-font-smoothing:antialiased;
+      -webkit-tap-highlight-color:transparent;
+      padding-bottom:calc(80px + env(safe-area-inset-bottom));
+    }
+
+    header{
+      padding:16px;
+      padding-top:calc(16px + env(safe-area-inset-top));
+      background:var(--primary);
+      color:#fff;
+      position:sticky;
+      top:0;
+      z-index:100;
+      box-shadow:0 2px 8px rgba(0,0,0,.1);
+    }
+
+    h1{ font-size:20px; margin:0; font-weight:600; }
+
+    .card{
+      background:#fff; margin:16px; border-radius:12px; padding:16px;
+      box-shadow:0 1px 3px rgba(0,0,0,.08);
+    }
+
+    label{
+      display:block; font-size:13px; font-weight:600; margin-bottom:6px;
+      color:#666; text-transform:uppercase; letter-spacing:0.5px;
+    }
+
+    select, input{
+      width:100%; padding:12px; font-size:16px; border:1px solid #d1d1d6;
+      border-radius:8px; margin-bottom:12px; background:#fff; appearance:none;
+    }
+
+    select{
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right 12px center; padding-right:36px;
+    }
+
+    input:focus, select:focus{ outline:none; border-color:var(--primary); }
+
+    button{
+      width:100%; padding:14px; font-size:16px; font-weight:600; border:none;
+      border-radius:8px; background:var(--primary); color:#fff; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; gap:8px;
+    }
+
+    button:active{ opacity:0.8; transform:scale(0.98); }
+    button:disabled{ opacity:0.5; cursor:not-allowed; }
+
+    .btn-secondary{ background:#6c757d; }
+    .btn-success{ background:var(--ok); }
+    .btn-danger{ background:var(--err); }
+    .scan-btn{ margin-bottom:16px; }
+
+    .progress-section{ margin-top:24px; }
+    .progress-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .progress-header h3{ margin:0; font-size:16px; font-weight:600; }
+    .progress-stats{ font-size:14px; color:#666; }
+    .progress-bar-container{ height:8px; background:#e9ecef; border-radius:4px; overflow:hidden; margin-bottom:16px; }
+    .progress-bar{ height:100%; background:var(--ok); transition:width 0.3s ease; }
+
+    .parts-list{ max-height:400px; overflow-y:auto; border:1px solid #e9ecef; border-radius:8px; }
+    .part-item{ padding:12px; border-bottom:1px solid #f0f0f0; display:flex; justify-content:space-between; align-items:center; }
+    .part-item:last-child{ border-bottom:none; }
+    .part-item.complete{ background:#e8f5e9; }
+    .part-info{ flex:1; }
+    .part-number{ font-weight:600; font-size:14px; color:#333; font-family:monospace; }
+    .part-desc{ font-size:12px; color:#666; margin-top:2px; }
+    .part-status{ display:flex; align-items:center; gap:8px; }
+
+    .qty-badge{ padding:4px 10px; border-radius:12px; font-size:13px; font-weight:600; white-space:nowrap; }
+    .qty-badge.complete{ background:var(--ok); color:#fff; }
+    .qty-badge.partial{ background:var(--warn); color:#fff; }
+    .qty-badge.pending{ background:#e9ecef; color:#666; }
+
+    .check-icon{
+      width:20px; height:20px; border-radius:50%; background:var(--ok); color:#fff;
+      display:flex; align-items:center; justify-content:center; font-size:12px;
+    }
+
+    .toast{
+      position:fixed; top:calc(70px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%);
+      padding:12px 20px; border-radius:8px; font-size:15px; font-weight:500; z-index:200;
+      max-width:90%; text-align:center; display:none; box-shadow:0 4px 12px rgba(0,0,0,.15);
+    }
+    .toast.show{ display:block; animation:slideDown 0.3s ease; }
+    @keyframes slideDown{ from{opacity:0; transform:translateX(-50%) translateY(-20px);} to{opacity:1; transform:translateX(-50%) translateY(0);} }
+    .toast.success{ background:var(--ok); color:#fff; }
+    .toast.error{ background:var(--err); color:#fff; }
+    .toast.info{ background:var(--primary); color:#fff; }
+
+    .modal{
+      position:fixed; inset:0; background:rgba(0,0,0,.9); display:none; align-items:center; justify-content:center; z-index:1000;
+    }
+    .modal.show{ display:flex; }
+    .modal .box{
+      background:#000; color:#fff; border-radius:16px; width:100%; height:100%;
+      max-width:500px; max-height:90vh; overflow:hidden; display:flex; flex-direction:column;
+      margin:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+    .modal header{ padding:16px; background:#1a1a1a; font-size:18px; font-weight:600; position:static; flex-shrink:0; }
+    #reader{ flex:1; position:relative; background:#000; overflow:hidden; }
+    .modal footer{ padding:16px; background:#1a1a1a; display:flex; gap:12px; flex-shrink:0; }
+    .modal footer button{ background:#fff; color:#000; }
+
+    .bottom-actions{
+      position:fixed; bottom:0; left:0; right:0; background:#fff; padding:12px 16px;
+      padding-bottom:calc(12px + env(safe-area-inset-bottom)); box-shadow:0 -2px 8px rgba(0,0,0,.1);
+      display:flex; gap:12px; z-index:50;
+    }
+    .bottom-actions button{ flex:1; }
+
+    .empty-state{ text-align:center; padding:40px 20px; color:#999; }
+    .empty-state-icon{ font-size:48px; margin-bottom:16px; }
+    .scanned-parts{ margin-top:16px; }
+    .scanned-item{ background:#f8f9fa; padding:10px; border-radius:6px; margin-bottom:8px; font-size:13px; font-family:monospace; }
+    .scanned-item strong{ display:block; margin-bottom:4px; color:#333; }
+    .scanned-item span{ color:#666; font-size:12px; }
+    .resume-qr{ margin-top:16px; padding:12px; border:1px dashed #c7c7c7; border-radius:8px; text-align:center; }
+    .resume-qr-title{ font-size:13px; font-weight:700; margin-bottom:8px; }
+    .resume-qr-note{ font-size:12px; color:#666; margin-top:8px; }
+
+    @media(max-width:375px){
+      h1{ font-size:18px; }
+      .part-number{ font-size:13px; }
+      .part-desc{ font-size:11px; }
+    }
+
+    /* === ADD: inline actions row for extras (Report / CSV) === */
+    .inline-actions{ display:flex; gap:12px; margin: 8px 0 12px; }
+    .inline-actions button{ flex:1; }
+
+    /* === ADD: row utilities for Assembly + Upload === */
+    .row{ display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+    .row .grow{ flex:1; min-width:220px; }
+
+    /* Hide utility controls when printing the page (not reports) */
+    @media print{ .no-print{ display:none; } }
+
+    /* === ADD: Picklist report styling (to match provided layout) === */
+    .picklist{
+      font-family: Arial, Helvetica, sans-serif;
+      color:#000; font-size:12px; line-height:1.35;
+    }
+    .picklist .header{
+      display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;
+    }
+    .picklist .brand{ font-weight:700; letter-spacing:0.5px; }
+    .picklist .title{ text-align:center; flex:1; font-weight:700; font-size:18px; }
+    .picklist .meta-right{ text-align:right; font-size:11px; white-space:nowrap; }
+    .picklist .bar{ border-top:2px solid #000; border-bottom:1px solid #000; padding:6px 0; margin:8px 0; }
+
+    .picklist table{ width:100%; border-collapse:collapse; }
+    .picklist th{ text-align:left; font-weight:700; border-bottom:1px solid #000; padding:6px 4px; font-size:11px; }
+    .picklist td{ padding:6px 4px; vertical-align:top; }
+    .picklist .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .picklist .row-sep{ border-top:1px dashed #aaa; margin:10px 0; }
+    .picklist .lot-line{ font-size:11px; color:#000; padding:2px 4px; }
+    .picklist .lot-line .label{ color:#444; }
+    .picklist .footer-note{ margin-top:18px; color:#555; font-size:11px; text-align:center; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Issue Parts to Job</h1>
+  </header>
+
+  <div class="card">
+    <label>Select Assembly</label>
+
+    <!-- Assembly + Upload row -->
+    <div class="row">
+      <div class="grow">
+        <select id="assemblySelect">
+          <option value="">-- Select Assembly --</option>
+          <option value="01H09000-01 REV U">01H09000-01 REV U</option>
+          <option value="01H08000-01 REV U">01H08000-01 REV U</option>
+          <option value="01H05000-01 REV T">01H05000-01 REV T</option>
+          <option value="01H01000-01 REV H">01H01000-01 REV H</option>
+        </select>
+      </div>
+
+      <div style="min-width:180px;">
+        <button id="uploadBomBtn" class="btn-secondary no-print" type="button" aria-label="Upload BOM">
+          <span>📤</span><span>Upload BOM</span>
+        </button>
+        <!-- Hidden file input for BOM upload -->
+        <input id="bomFileInput" type="file" accept=".csv,.json,text/csv,application/json" style="display:none" />
+      </div>
+    </div>
+
+    <label>Job Number</label>
+    <input id="jobInput" type="text" placeholder="Scan or enter job number" autocomplete="off" />
+
+    <button id="jobScanBtn" class="scan-btn" type="button" aria-label="Scan Job QR Code">
+      <span>📷</span>
+      <span>Scan Job QR Code</span>
+    </button>
+
+    <button id="resumeBtn" class="scan-btn btn-secondary" type="button" style="margin-top:-8px;" aria-label="Resume Partial Pick">
+      <span>🔄</span>
+      <span>Resume Partial Pick</span>
+    </button>
+  </div>
+
+  <div class="card" id="partsCard" style="display:none;">
+    <div class="progress-section">
+      <div class="progress-header">
+        <h3>Parts Progress</h3>
+        <span class="progress-stats" id="progressStats">0 of 0</span>
+      </div>
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="progressBar" style="width:0%"></div>
+      </div>
+    </div>
+
+    <button id="partScanBtn" class="scan-btn btn-success" type="button" aria-label="Scan Part QR Code">
+      <span>📷</span>
+      <span>Scan Part QR Code</span>
+    </button>
+
+    <div id="scannedParts" class="scanned-parts"></div>
+
+    <div class="resume-qr no-print" id="resumeQrSection" style="display:none;">
+      <div class="resume-qr-title">Resume / Edit Picklist</div>
+      <div id="resumeQr"></div>
+      <div class="resume-qr-note">Scan this QR in the web app to resume or edit this pick.</div>
+    </div>
+
+    <!-- Utility actions for Picked Goods Report + CSV Export -->
+    <div class="inline-actions no-print">
+      <button id="pickedReportBtn" class="btn-secondary" type="button" aria-label="Generate Picked Goods Report">
+        <span>📄</span>
+        <span>Picked Goods Report</span>
+      </button>
+      <button id="exportCsvBtn" class="btn-secondary" type="button" aria-label="Export Picked Goods to CSV">
+        <span>⬇️</span>
+        <span>Export CSV</span>
+      </button>
+    </div>
+
+    <div class="parts-list" id="partsList"></div>
+  </div>
+
+  <div class="bottom-actions" id="bottomActions" style="display:none;">
+    <button id="resetBtn" class="btn-secondary" type="button">Reset</button>
+    <button id="completeBtn" class="btn-success" type="button" disabled>Complete Job</button>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Scanner modal -->
+  <div class="modal" id="scanModal" aria-hidden="true" aria-label="QR Scanner Modal">
+    <div class="box">
+      <header>Scanning QR Code</header>
+      <div id="reader"></div>
+      <footer>
+        <button id="closeScanner" type="button">Cancel</button>
+      </footer>
+    </div>
+  </div>
+
+</body>
+<!-- External libraries -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<!-- App script (Part 1 of 2) -->
+<script>
+/* ============================
+   Helpers / State
+============================ */
+const $ = (id) => document.getElementById(id);
+const INITIALS = "KS"; // your initials for pickline signing
+
+// Application state
+let currentAssembly = null;
+let currentJob = null;
+let currentBOM = [];
+let issuedParts = {}; // { "partNumber-revision": [ {scannedRevision,bomRevision,lot,bin,location,serial,ep,scannedAt} ] }
+let scannerMode = null; // 'job' | 'part' | 'resume'
+let html5QrcodeScanner = null;
+let resumeQrInstance = null;
+
+function formatQty(q){
+  const n = Number(q || 0);
+  if(Number.isInteger(n)) return String(n);
+  return n.toFixed(3).replace(/\.?0+$/,'');
+}
+function sumIssuedQty(key){
+  const scans = issuedParts[key] || [];
+  return scans.reduce((sum, s) => sum + (Number(s.qty ?? 1) || 0), 0);
+}
+
+/* ============================
+   BOM DATA (initial built-ins)
+============================ */
+const BOM_DATA = {
+  "01H09000-01 REV U": [
+    {"partNumber": "01H09100-01", "revision": "A", "description": "ASSEMBLY, HEAD END, ACTUATOR MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09300-01", "revision": "A", "description": "ASSEMBLY, ROD END, ACTUATOR MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09001-01", "revision": "F", "description": "CYLINDER, ACTUATOR ASSEMBLY, MLG", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "01H09001-01", "revision": "G", "description": "CYLINDER, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09002-02", "revision": "C", "description": "PISTON ROD, ACTUATOR ASSEMBLY, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09400-01", "revision": "A", "description": "LOCK PISTON & PINS, ACTR ASSY, MLG", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "01H09400-02", "revision": "A", "description": "LOCK PISTON & PINS, ACTR ASSY, MLG", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "01H09400-03", "revision": "A", "description": "LOCK PISTON & PINS, ACTR ASSY, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09004-01", "revision": "E", "description": "LOCK SEGMENT,ACTUATOR ASSEMBLY, MLG", "uom": "EA", "qtyRequired": 4.0},
+    {"partNumber": "01H09005-01", "revision": "B", "description": "COMPRESSION SPRING,ACTR ASSMBLY,MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09008-01", "revision": "B", "description": "RING, SNUBBING, ACTR ASSEMBLY, MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09009-01", "revision": "B", "description": "LEVER ARM,SWITCH,ACTR ASSMBLY,FLAP", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09010-03", "revision": "A", "description": "ACTUATION RING SWITCH, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09012-01", "revision": "A", "description": "RETAINER, SPRING, ACTR ASSEMBLY,MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09013-01", "revision": "D", "description": "RING, RETAINING, ACTUATOR ASSEMBLY,", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09014-01", "revision": "B", "description": "PLUG RETAINER,TRANSFER TUBE, ACTR", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09020-01", "revision": "B", "description": "END BEARING, ROD, ACTR ASSEMBLY,MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09021-01", "revision": "B", "description": "NUT, HEAD END, ACTUATOR ASSEMBLY, M", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09022-01", "revision": "C", "description": "RING, RETAINING, ACTUATOR ASSEMBLY,", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09023-01", "revision": "A", "description": "END GLAND,RETAINER NUT,ACTR ALY,MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09024-01", "revision": "A", "description": "TUBE, TRANSFER, ACTUATOR ASSEMBLY,", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09025-01", "revision": "B", "description": "KEY, LOCKING", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09026-01", "revision": "A", "description": "NUT, JAM, ROD END", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09030-02", "revision": "A", "description": "NAMEPLATE, ACTUATOR ASSEMBLY, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H02008-02", "revision": "B", "description": "HOUSING, SWITCH,ACTR ASSEMBLY,FLAP", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H02010-01", "revision": "A", "description": "BALL SOCKET LEVER ARM", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "01H02010-01", "revision": "B", "description": "BALL SOCKET LEVER ARM ACTR ASSY, FL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H02011-01", "revision": "A", "description": "LEVER ARM RETAINER SEAL", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "01H02011-01", "revision": "B", "description": "RETAINER SEAL, ACTU ASSY, FLAP", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "AS3472-225", "revision": "000", "description": "RING, RETAINING-INTERNAL SPIRAL WOU", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "AS4099-06", "revision": "000", "description": "ADAPTER ASSEMBLY", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "AS5860R09-109", "revision": "000", "description": "RING,BACK UP, SINGLE TURN", "uom": "EA", "qtyRequired": 4.0},
+    {"partNumber": "AS5860P09-111", "revision": "000", "description": "RING, BACK-UP, SINGLE TURN", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "AS5861P09-146", "revision": "000", "description": "RING, BACK-UP, SOLID", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "AS5861R09-149", "revision": "000", "description": "RING,BACK-UP, SOLID", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "M83461/1-010", "revision": "000", "description": "PREFORMED PACKING (O-RING)", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "M83461/1-012", "revision": "000", "description": "PREFORMED PACKING (O-RING)", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "M83461/1-109", "revision": "000", "description": "PACKING, PERFORMED (O-RING)", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "M83461/1-111", "revision": "000", "description": "PACKING, PREFORMED", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "M83461/1-146", "revision": "000", "description": "PACKING, PREFORMED", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "M83461/1-149", "revision": "000", "description": "PACKING, PREFORMED", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "NAS513-22", "revision": "000", "description": "WASHER-ROD END LOCKING", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "NAS1149C0332R", "revision": "000", "description": "WASHER, FLAT", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "NAS1352C3H8", "revision": "000", "description": "SOCKET HEAD CAP SCREW", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "P6-24170", "revision": "B", "description": "P6,SWITCH,SENSITIVE, LL&STND LVL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "PBA1CG123AT29NE", "revision": "000", "description": "T-SEAL, PISTON", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "PBA1CG125AT29NE", "revision": "000", "description": "T-SEAL ASSEMBLY", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "PBA1CG229AT29NE", "revision": "000", "description": "T-SEAL, PISTON", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "RBA1CG226AT29NE", "revision": "000", "description": "T-SEAL, ROD", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "RVC20G226AT99SM", "revision": "000", "description": "VARISEAL, ROD SCRAPER", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "GR08WB329AT11", "revision": "000", "description": "RING, WEAR", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "AEROSHELL 22 GREASE", "revision": "000", "description": "MIL-PRF-81322", "uom": "BTL", "qtyRequired": 0.0},
+    {"partNumber": "MIL-PRF-81322", "revision": "000", "description": "GREASE, MULTIPURPOSE", "uom": "EA", "qtyRequired": 0.001},
+    {"partNumber": "MIL-PRF-87257", "revision": "000", "description": "HYDRAULIC FLUID", "uom": "GAL", "qtyRequired": 0.001},
+    {"partNumber": "M85582-2-C2", "revision": "000", "description": "MIL-PRF-M85582 TY 2 CL C2 PRIMER", "uom": "QT", "qtyRequired": 0.001},
+    {"partNumber": "683-3-2 / X-310A", "revision": "000", "description": "TWO PART POLYURETHANE, BASE / CATAL", "uom": "QT", "qtyRequired": 0.0},
+    {"partNumber": "683-3-20 / X-310A", "revision": "000", "description": "TWO PART POLYURETHANE, BASE / CATAL", "uom": "QT", "qtyRequired": 0.001},
+    {"partNumber": "MS20995C32", "revision": "000", "description": "SAFETY WIRE", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "AMS-S-8802 CL B-1/2", "revision": "000", "description": "SEALING COMPOUND,TEMPERATURE RESIST", "uom": "QT", "qtyRequired": 0.001},
+    {"partNumber": "ASM-ASC-6DA", "revision": "000", "description": "CAP ABLY,PROT. BEAM SEAL FIT,LOW PR", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "01H09031-01", "revision": "A", "description": "SPACER, LOCK SPRING, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09033-01", "revision": "A", "description": "RING, STOP, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H09027-01", "revision": "D", "description": "BEARING RING, PISTON,ACTR ABLY, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "AS3510-0212K", "revision": "000", "description": "SAFETY CABLE KIT, CRES,.032 DIA", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "AS3510-0215K", "revision": "000", "description": "SAFETY CABLE KIT, CRES,.032 DIA", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "AS3510-0218K", "revision": "000", "description": "SAFETY CABLE KIT (CRES .032 DIA)", "uom": "EA", "qtyRequired": 6.0}
+  ],
+  "01H08000-01 REV U": [
+    {"partNumber": "01H08200-01", "revision": "A", "description": "ASSEMBLY, END CAP, ACTUATOR, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08001-01", "revision": "A", "description": "CYLINDER, ACTUATOR ASSEMBLY, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08002-01", "revision": "J", "description": "PISTON ROD, ACTUATOR ASSEMBLY, MLG", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "01H08002-01", "revision": "K", "description": "PISTON, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08003-01-1", "revision": "G", "description": "PISTON, LOCKING, MLG", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "01H08003-01-2", "revision": "G", "description": "PISTON, LOCKING, MLG", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "01H08004-01", "revision": "H", "description": "LOCK SEGMENT, ACTUATOR ASSEMBLY, ML", "uom": "EA", "qtyRequired": 4.0},
+    {"partNumber": "01H08005-01", "revision": "B", "description": "COMPRESSION SPRING, ACTUATOR ASSEMB", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08006-01", "revision": "D", "description": "NUT, RETAINER, ACTUATOR ASSEMBLY, M", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "01H08007-01", "revision": "C", "description": "RING, RETAINING, ACTUATOR ASSEMBLY,", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "01H08008-01", "revision": "C", "description": "RING, SNUBBING, ACTUATOR ASSEMBLY,", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08009-01", "revision": "A", "description": "TUBE, TRANSFER, ACTUATOR ASSEMBLY,", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08010-02", "revision": "B", "description": "RING,LOCK INDICATION,ACT AMBLY, MLG", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "01H08010-02", "revision": "C", "description": "RING,LOCK INDICATION,ACT AMBLY, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08012-01", "revision": "B", "description": "RETAINER, SPRING, ACTR ASSEMBLY,MGL", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "01H08012-01", "revision": "C", "description": "RETAINER, SPRING, ACTR ASSEMBLY,MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08013-01", "revision": "C", "description": "RING, RETAINING, ACTR ASSEMBLY, MGL", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "01H08013-01", "revision": "D", "description": "RING, RETAINING, ACTR ASSEMBLY, MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08014-01", "revision": "B", "description": "LEVER ARM, SWITCH, ACTR ASSBLY, MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08015-01", "revision": "A", "description": "BALL SOCKET,LEVER ARM,ACTR ASLY,MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08016-01", "revision": "B", "description": "RETAINER SEAL, ACTUATOR ASSBLY, MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08017-02", "revision": "D", "description": "BUTTON INDICATION,PLUNGER,FULL SLOT", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08018-02", "revision": "A", "description": "COMPRESSION SPRING,ACTR ASSMBLY,MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08019-01", "revision": "A", "description": "RETAINER, INDCTR BUTTON, ACT ASBLY", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08020-01", "revision": "B", "description": "HOUSING, SWITCH, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08021-01", "revision": "C", "description": "PLATE, RETAINER,ACTUATOR ASSBLY,MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08022-01", "revision": "A", "description": "UNION, FLARELESS TUBE", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08031-01", "revision": "C", "description": "BEARING,SPHERICAL SPLIT,ACTR ASMBY", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08032-01", "revision": "B", "description": "BEARING,SPHERICAL SPLIT,ACTR ASMBLY", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08033-01", "revision": "B", "description": "BLOCK,HARNESS SUPPORT,MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08040-02", "revision": "A", "description": "NAMEPLATE, ACTUATOR ASSEMBLY, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08101-01", "revision": "A", "description": "HEAD END , ACTUATOR ASSEMBLY, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08301-01", "revision": "C", "description": "ROD END,ACTUATOR ASSEMBLY, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08400-01", "revision": "C", "description": "ASSEMBLY SENSOR CABLE", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "AS3472-281", "revision": "A", "description": "RING,RETAINING-INTERNAL SPIRAL WND", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "AS5860R09-109", "revision": "000", "description": "RING,BACK UP, SINGLE TURN", "uom": "EA", "qtyRequired": 4.0},
+    {"partNumber": "AS5861R09-241", "revision": "000", "description": "RING, BACK-UP, SOLID", "uom": "EA", "qtyRequired": 4.0},
+    {"partNumber": "AS15001-1", "revision": "000", "description": "ZIRT FITTING", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "AS21919WCF03", "revision": "000", "description": "CLAMP,LOOP TYPE,CUSHIONED,SUPPORT", "uom": "EA", "qtyRequired": 4.0},
+    {"partNumber": "AS21919WCF06", "revision": "000", "description": "CLAMP, LOOP TYPE, CUSHIONED,SUPPORT", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "GR16WB333AT11", "revision": "000", "description": "RING, WEAR", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "M83461/1-012", "revision": "000", "description": "PREFORMED PACKING (O-RING)", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "M83461/1-241", "revision": "000", "description": "PACKING PREFORMED", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "M83461/1-109", "revision": "000", "description": "PACKING, PERFORMED (O-RING)", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "M83461/2-906", "revision": "000", "description": "PACKING PREFORMED", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "M83461/2-908", "revision": "000", "description": "PACKING PREFORMED", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "MS9390-170", "revision": "MS", "description": "PIN,DOWEL .12525/.12475 OD X .375", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "MS9390-190", "revision": "000", "description": "PIN,STRAIGHT,HEADLESS-CRES", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "MS9390-210", "revision": "000", "description": "PIN, STRAIGHT, HEADLESS-CRES", "uom": "EA", "qtyRequired": 4.0},
+    {"partNumber": "MS14198K32P", "revision": "000", "description": "WASHER-ROD END LOCKING", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "MS21920-37", "revision": "000", "description": "CLAMP, HOSE", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "MS21902-8", "revision": "000", "description": "UNION, FLARELESS TUBE", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "NAS1149C0332R", "revision": "000", "description": "WASHER, FLAT", "uom": "EA", "qtyRequired": 8.0},
+    {"partNumber": "NAS1149C0363R", "revision": "000", "description": "WASHER, FLAT", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "NAS1351C310", "revision": "000", "description": "SCREW, CAP", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "NAS1351C3H12", "revision": "000", "description": "SCREW, CAP", "uom": "EA", "qtyRequired": 4.0},
+    {"partNumber": "NAS1423C32", "revision": "000", "description": "NUT, JAM", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "NAS1804-3", "revision": "000", "description": "NUT, SELF LOCKING, DOUBLE HEXAGON", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "PBA1CG131AT29NE", "revision": "000", "description": "T-SEAL ASSEMBLY", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "PBA1CG133AT29NE", "revision": "000", "description": "T-SEAL ASSEMBLY", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "PBA2CG338AT29NE", "revision": "000", "description": "T-SEAL, PISTON", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "RBA2CG333AT29NE", "revision": "000", "description": "T-SEAL, ROD", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "RVC30G333AT99SM", "revision": "000", "description": "VARISEAL, ROD SCRAPER", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "MIL-PRF-87257", "revision": "000", "description": "HYDRAULIC FLUID", "uom": "GAL", "qtyRequired": 0.001},
+    {"partNumber": "683-3-2 / X-310A", "revision": "000", "description": "TWO PART POLYURETHANE, BASE / CATAL", "uom": "QT", "qtyRequired": 0.0},
+    {"partNumber": "683-3-20 / X-310A", "revision": "000", "description": "TWO PART POLYURETHANE, BASE / CATAL", "uom": "QT", "qtyRequired": 0.001},
+    {"partNumber": "MS20995C32", "revision": "000", "description": "SAFETY WIRE", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "AS3510-0212K", "revision": "000", "description": "SAFETY CABLE KIT, CRES,.032 DIA", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "AS3510-0215K", "revision": "000", "description": "SAFETY CABLE KIT, CRES,.032 DIA", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "AS3510-0218K", "revision": "000", "description": "SAFETY CABLE KIT (CRES .032 DIA)", "uom": "EA", "qtyRequired": 10.0},
+    {"partNumber": "AMS-S-8802 CL B-1/2", "revision": "000", "description": "SEALING COMPOUND,TEMPERATURE RESIST", "uom": "QT", "qtyRequired": 0.001},
+    {"partNumber": "MIL-PRF-81322", "revision": "000", "description": "GREASE, MULTIPURPOSE", "uom": "EA", "qtyRequired": 0.001},
+    {"partNumber": "FUF-6", "revision": "000", "description": "CAP,ASMBLY, PROTECTIVE,BEAM SEAL LP", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "FUF-8", "revision": "000", "description": "CAP, ASBLY, PROTECTIVE,BEAM SEAL LP", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08023-01", "revision": "A", "description": "WASHER,SPR RETAINER,ACT AMBLY,MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08024-01", "revision": "B", "description": "BUSHING, BUTTON INDICATOR, ACTUATOR", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08025-01", "revision": "A", "description": "BEARING RING, PISTON, ACT ASSLY MLG", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "01H08025-01", "revision": "B", "description": "BEARING RING, PISTON, ACT ASSLY MLG", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "AEROSHELL 33 GREASE", "revision": "000", "description": "MIL-PRF-23827  TYPE 1", "uom": "BTL", "qtyRequired": 0.001},
+    {"partNumber": "01H08060-01", "revision": "B", "description": "LOCK,ROD END,EXTR-STRGTH,HI PROFILE", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "LOCTITE 242", "revision": "000", "description": "250 ML (8.45 OZ) BOTTLE", "uom": "BTL", "qtyRequired": 0.001},
+    {"partNumber": "LOCTITE 243", "revision": "000", "description": "250 ML (8.45 OZ) BOTTLE", "uom": "BTL", "qtyRequired": 0.0},
+    {"partNumber": "01H08003-02", "revision": "B", "description": "PISTON, LOCKING, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H08026-01", "revision": "B", "description": "PIN, STRAIGHT DOWEL", "uom": "EA", "qtyRequired": 4.0}
+  ],
+  "01H05000-01 REV T": [
+    {"partNumber": "01H05100-01", "revision": "A", "description": "ASSEMBLY HEAD END,ACTUATOR,MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H05200-01", "revision": "A", "description": "ASSEMBLY, END CAP, ACTUATOR,MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H05300-01", "revision": "A", "description": "ASSEMBLY ROD END,ACTUATOR,MGL", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "01H05300-02", "revision": "A", "description": "ASSEMBLY ROD END,ACTUATOR,MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H05001-01", "revision": "C", "description": "CYLINDER, ACTUATOR,ASSEMBLY, MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H05002-02", "revision": "D", "description": "PISTON ROD, ACTUATOR ASSEMBLY, MGL", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "01H05002-02", "revision": "E", "description": "PISTON ROD, ACTUATOR ASSEMBLY, MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H05003-05", "revision": "A", "description": "PISTON, LOCKING, MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H05004-01", "revision": "G", "description": "LOCK SEGMENT, ACTUATOR ASSEMBLY,MGL", "uom": "EA", "qtyRequired": 4.0},
+    {"partNumber": "01H05005-01", "revision": "B", "description": "COMPRESSION SPRG,ACTUATOR ASSY,MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H05006-01", "revision": "D", "description": "NUT,RETAINER,ACTUATOR ASSEMBLY,MGL", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "01H05007-01", "revision": "F", "description": "RING,RETAINER,ACTUATOR ASSEMBLY,MGL", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "01H05008-01", "revision": "D", "description": "RING,SNUBBING,ACTUATOR ASSEMBLY,MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H05009-01", "revision": "D", "description": "HOUSING,SWITCH,ACTUATOR ASSBLY,MLG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H05010-01", "revision": "C", "description": "PLUNGER,LOCK,INDICATION,ACT. ASBLY", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H05012-02", "revision": "B", "description": "RETAINER,SPRING, ACTUATOR ASBLY,MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H05011-02", "revision": "B", "description": "RING INDICATION, ACTUATOR ASBLY,MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H05013-01", "revision": "E", "description": "RING,RETAINING,ACTUATOR ASSBLY,MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H05014-01", "revision": "C", "description": "GUIDE,BALL,ACTUATOR ASSEMBLY,MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H05021-02", "revision": "A", "description": "NAMEPLATE,ACTUATOR ASSEMBLY,MGL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "PBA1CG110AT29NE", "revision": "000", "description": "T-SEAL, PISTON", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "PBA1CG111AT29NE", "revision": "000", "description": "T-SEAL, PISTON", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "PBA2CG119AT29NE", "revision": "000", "description": "T-SEAL, PISTON", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "PBA2CG228AT29NE", "revision": "000", "description": "T-SEAL, PISTON", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "RBA2CG220AT29NE", "revision": "000", "description": "T-SEAL, PISTON", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "RVC20G220AT99SM", "revision": "000", "description": "VARISEAL, ROD SCRAPER", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "GR06WB220AT11", "revision": "000", "description": "RING,WEAR", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "P6-24170", "revision": "B", "description": "P6,SWITCH,SENSITIVE, LL&STND LVL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "683-3-20 / X-310A", "revision": "000", "description": "TWO PART POLYURETHANE, BASE / CATAL", "uom": "QT", "qtyRequired": 0.001},
+    {"partNumber": "M83461/1-147", "revision": "000", "description": "PACKING, PREFORMED", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "M83461/1-149", "revision": "000", "description": "PACKING, PREFORMED", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "AS5861R09-147", "revision": "000", "description": "RING, BACK-UP, SOLID", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "AS5861R09-149", "revision": "000", "description": "RING,BACK-UP, SOLID", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "AS3472-181", "revision": "000", "description": "RING, RETAINING-INTERL SPIRAL WOUND", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "MS9390-090", "revision": "000", "description": "PIN STRAIGHT, HEADLESS-CRES", "uom": "EA", "qtyRequired": 4.0},
+    {"partNumber": "MS19060-314", "revision": "000", "description": "BALL, BEARING", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H05035-01", "revision": "A", "description": "WASHER-ROD END LOCKING", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "NAS1149C0332R", "revision": "000", "description": "WASHER, FLAT", "uom": "EA", "qtyRequired": 4.0},
+    {"partNumber": "NAS1351C3H10", "revision": "000", "description": "SCREW, CAP", "uom": "EA", "qtyRequired": 4.0},
+    {"partNumber": "NAS1423C16", "revision": "000", "description": "NUT, JAM", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "NAS836H6", "revision": "000", "description": "PLUG PORT, PROTECTIVE", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "MIL-PRF-87257", "revision": "000", "description": "HYDRAULIC FLUID", "uom": "GAL", "qtyRequired": 0.001},
+    {"partNumber": "MS20995C20", "revision": "000", "description": "0.0200\" DIAMETER 304 SS SAFETY WIRE", "uom": "FT", "qtyRequired": 0.001},
+    {"partNumber": "AMS-S-8802 CL B-1/2", "revision": "000", "description": "SEALING COMPOUND,TEMPERATURE RESIST", "uom": "QT", "qtyRequired": 0.001},
+    {"partNumber": "MIL-PRF-81322", "revision": "000", "description": "GREASE, MULTIPURPOSE", "uom": "EA", "qtyRequired": 0.001},
+    {"partNumber": "LC 035C 07 S", "revision": "000", "description": "SPRING, COMPRESSION", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "MS28775-116", "revision": "000", "description": "O RING", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "AS5781P09-116", "revision": "000", "description": "RING, BACK-UP, SCARF CUT", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "01H05030-01", "revision": "C", "description": "MAIN PISTON W/SLEEVE", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "01H05025-01", "revision": "B", "description": "SHIM, SPRING, LOCK PISTON", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "AS3510-0112K", "revision": "000", "description": "SAFETY CABLE KIT (CRES .022 DIA)", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "AS3510-0115K", "revision": "000", "description": "SAFETY CABLE KIT (CRES .022 DIA)", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "AS3510-0118K", "revision": "000", "description": "SAFETY CABLE KIT, CRES, .020 DIA", "uom": "EA", "qtyRequired": 7.0}
+  ],
+  "01H01000-01 REV H": [
+    {"partNumber": "01H01100-01", "revision": "A", "description": "HEAD END ASSEMBLY", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H01001-01", "revision": "E", "description": "CYLINDER, ACT. ASSY, SPEED BRAKE", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H01002-01", "revision": "H", "description": "PISTON ROD", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "01H01003-01", "revision": "E", "description": "LOCK PISTON", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H01004-02", "revision": "B", "description": "LOCK SEGMENTS", "uom": "EA", "qtyRequired": 4.0},
+    {"partNumber": "01H01005-01", "revision": "A", "description": "COMPRESSION SPRING", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H01005-01", "revision": "B", "description": "SPRING, COMPRESSION ACTR ASSY SPEED", "uom": "EA", "qtyRequired": 0.0},
+    {"partNumber": "01H01006-01", "revision": "B", "description": "HEAD END RETAINER NUT", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H01007-01", "revision": "E", "description": "RETAINING RING", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H01008-01", "revision": "B", "description": "SNUBBING RING", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "01H01021-02", "revision": "A", "description": "ACTUATOR ASSEMBLY NAMEPLATE", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "PBA2CG121AT29NE", "revision": "000", "description": "PISTON T-SEAL TRELLEBORG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "PBA1CG013AT29NE", "revision": "000", "description": "PISTON T-SEAL TRELLEBORG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "PBA1CG011AT29NE", "revision": "000", "description": "PISTON T-SEAL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "RBA1CG113AT29NE", "revision": "000", "description": "ROD T-SEAL TRELLEBORG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "M83461/1-126", "revision": "000", "description": "PREFORMED PACKING (O-RING)", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "AS5860P09-126", "revision": "000", "description": "BACK UP RING", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "GR04WB113AT11", "revision": "000", "description": "ROD SLYDRING TRELLEBORG", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "RVC10G113AT99SM", "revision": "000", "description": "M2S ROD SCRAPER VARISEAL", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "MS20995C20", "revision": "000", "description": "0.0200\" DIAMETER 304 SS SAFETY WIRE", "uom": "FT", "qtyRequired": 0.0001},
+    {"partNumber": "MIL-PRF-87257", "revision": "000", "description": "HYDRAULIC FLUID", "uom": "GAL", "qtyRequired": 0.001},
+    {"partNumber": "683-3-20 / X-310A", "revision": "000", "description": "TWO PART POLYURETHANE, BASE / CATAL", "uom": "QT", "qtyRequired": 0.001},
+    {"partNumber": "NAS1423C5", "revision": "000", "description": "JAM NUT", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "NAS513-5", "revision": "000", "description": "ROD END LOCKING WASHER", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "M81935/1-04K", "revision": "000", "description": "BEARING,PLAIN, ROD END,M SELF ALIGN", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "AS3472-106", "revision": "000", "description": "RETAINING RING", "uom": "EA", "qtyRequired": 1.0},
+    {"partNumber": "NAS836H4", "revision": "000", "description": "PROTECTIVE PORT PLUG", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "MS9390-080", "revision": "000", "description": "HEADLESS STRAIGHT PIN, CRES", "uom": "EA", "qtyRequired": 2.0},
+    {"partNumber": "AMS-S-8802 CL B-1/2", "revision": "000", "description": "SEALING COMPOUND,TEMPERATURE RESIST", "uom": "QT", "qtyRequired": 0.001},
+    {"partNumber": "AS3510-0118K", "revision": "000", "description": "SAFETY CABLE KIT, CRES, .020 DIA", "uom": "EA", "qtyRequired": 2.0}
+  ]
+};
+
+/* ============================
+   Init
+============================ */
+document.addEventListener('DOMContentLoaded', () => {
+  $('assemblySelect').addEventListener('change', onAssemblyChange);
+  $('jobInput').addEventListener('input', onJobInput);
+  $('jobScanBtn').addEventListener('click', () => openScanner('job'));
+  $('resumeBtn').addEventListener('click', () => openScanner('resume'));
+  $('partScanBtn').addEventListener('click', () => openScanner('part'));
+  $('closeScanner').addEventListener('click', closeScanner);
+  $('resetBtn').addEventListener('click', resetJob);
+  $('completeBtn').addEventListener('click', completeJob);
+
+  // Add-ons
+  $('pickedReportBtn').addEventListener('click', () => {
+    const stats = computePickStats();
+    generatePicklistReport(stats.isPartial, stats.missingParts, stats.totalIssued, stats.totalRequired);
+  });
+  $('exportCsvBtn').addEventListener('click', exportPickedToCSV);
+  $('uploadBomBtn').addEventListener('click', () => $('bomFileInput').click());
+  $('bomFileInput').addEventListener('change', handleBomFileSelected);
+
+  // Prevent double-tap zoom (iOS)
+  document.addEventListener('dblclick', (e) => e.preventDefault(), { passive:false });
+});
+
+/* ============================
+   Core UI + State
+============================ */
+function onAssemblyChange(e){
+  currentAssembly = e.target.value;
+  if(currentAssembly && BOM_DATA[currentAssembly]){
+    currentBOM = BOM_DATA[currentAssembly];
+    checkReadyState();
+  }
+}
+function onJobInput(e){
+  currentJob = e.target.value.trim();
+  checkReadyState();
+}
+function checkReadyState(){
+  if(currentAssembly && currentJob){
+    initializeJob();
+  }
+}
+function initializeJob(){
+  issuedParts = {}; // reset picks for new combo
+  $('partsCard').style.display = 'block';
+  $('bottomActions').style.display = 'flex';
+  renderPartsList();
+  updateProgress();
+}
+function renderPartsList(){
+  const html = currentBOM.map(part => {
+    const key = `${part.partNumber}-${part.revision}`;
+    const qtyIssued = sumIssuedQty(key);
+    const qtyRequired = Number(part.qtyRequired) || 0;
+    const isComplete = qtyRequired === 0 ? true : qtyIssued >= qtyRequired;
+    const isPartial = qtyIssued > 0 && qtyIssued < qtyRequired;
+    let badgeClass = 'pending';
+    if(isComplete) badgeClass = 'complete';
+    else if(isPartial) badgeClass = 'partial';
+    return `
+      <div class="part-item ${isComplete ? 'complete' : ''}">
+        <div class="part-info">
+          <div class="part-number">${part.partNumber} REV ${part.revision}</div>
+          <div class="part-desc">${part.description}</div>
+        </div>
+        <div class="part-status">
+          <span class="qty-badge ${badgeClass}">${formatQty(qtyIssued)}/${formatQty(qtyRequired)}</span>
+          ${isComplete ? '<span class="check-icon">✓</span>' : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+  $('partsList').innerHTML = html || '<div class="empty-state"><div class="empty-state-icon">📦</div><div>No parts in BOM</div></div>';
+}
+function updateProgress(){
+  let totalRequired = 0, totalIssued = 0;
+  currentBOM.forEach(p=>{
+    const key = `${p.partNumber}-${p.revision}`;
+    const qtyRequired = Number(p.qtyRequired) || 0;
+    totalRequired += qtyRequired;
+    totalIssued += Math.min(sumIssuedQty(key), qtyRequired);
+  });
+  const pct = totalRequired ? (totalIssued/totalRequired*100) : 0;
+  $('progressStats').textContent = `${formatQty(totalIssued)} of ${formatQty(totalRequired)}`;
+  $('progressBar').style.width = `${pct}%`;
+  $('completeBtn').disabled = totalIssued === 0;
+  if(pct >= 100) $('completeBtn').innerHTML = '<span>✓</span><span>Complete Pick</span>';
+  else if(totalIssued>0) $('completeBtn').innerHTML = '<span>📋</span><span>Partial Pick</span>';
+  else $('completeBtn').innerHTML = '<span>📋</span><span>Complete Pick</span>';
+  updateScannedPartsDisplay();
+  updateResumeQr();
+}
+function updateScannedPartsDisplay(){
+  const scanned=[];
+  for(const key in issuedParts){
+    (issuedParts[key]||[]).forEach(s=>scanned.push({key,...s}));
+  }
+  scanned.sort((a,b)=>b.scannedAt-a.scannedAt);
+  if(scanned.length===0){ $('scannedParts').innerHTML=''; return; }
+  const html = scanned.slice(0,5).map(scan=>{
+    const idx = scan.key.lastIndexOf('-');
+    const partNumber = idx===-1 ? scan.key : scan.key.slice(0,idx);
+    const revMatch = scan.scannedRevision === scan.bomRevision;
+    const revDisplay = revMatch ? `REV ${scan.scannedRevision}` : `REV ${scan.scannedRevision} <span style="color:#ff8c00;">(BOM: ${scan.bomRevision})</span>`;
+    const serialText = scan.serial ? ` | SN: ${scan.serial}` : '';
+    const qtyText = scan.qty != null ? ` | Qty: ${formatQty(scan.qty)}` : '';
+    return `
+      <div class="scanned-item">
+        <strong>${partNumber} ${revDisplay}</strong>
+        <span>Lot: ${scan.lot || 'N/A'}${serialText}${qtyText} | Bin: ${scan.bin || 'N/A'} | Loc: ${scan.location || 'N/A'}</span>
+      </div>
+    `;
+  }).join('');
+  $('scannedParts').innerHTML = `<div style="font-weight:600; margin-bottom:8px; font-size:13px;">Recent Scans:</div>${html}`;
+}
+
+/* ============================
+   Scanner
+============================ */
+function openScanner(mode){
+  scannerMode = mode;
+  if(location.protocol!=='https:' && location.hostname!=='localhost'){
+    showToast('Camera requires HTTPS','error'); return;
+  }
+  if(typeof Html5Qrcode==='undefined'){ showToast('Scanner library not loaded. Refresh.','error'); return; }
+  $('scanModal').classList.add('show');
+  try{
+    html5QrcodeScanner = new Html5Qrcode("reader");
+    const config = { fps:10, qrbox:{width:250,height:250}, aspectRatio:1.0, disableFlip:false };
+    html5QrcodeScanner.start(
+      {facingMode:"environment"},
+      config,
+      decodedText=>handleScan(decodedText),
+      ()=>{}
+    ).catch(err=>{
+      console.error(err); closeScanner();
+      let msg='Failed to start camera';
+      if(err?.name==='NotAllowedError' || String(err).includes('NotAllowedError')) msg='Camera permission denied';
+      else if(err?.name==='NotFoundError' || String(err).includes('NotFoundError')) msg='No camera found';
+      else if(err?.name==='NotReadableError' || String(err).includes('NotReadableError')) msg='Camera in use by another app';
+      showToast(msg,'error');
+    });
+  }catch(err){
+    console.error(err); closeScanner(); showToast('Scanner initialization failed: '+err.message,'error');
+  }
+}
+function closeScanner(){
+  $('scanModal').classList.remove('show');
+  if(html5QrcodeScanner){
+    html5QrcodeScanner.stop().then(()=>{ html5QrcodeScanner.clear(); html5QrcodeScanner=null; })
+      .catch(()=>{ html5QrcodeScanner=null; });
+  }
+}
+function handleScan(qrData){
+  if(navigator.vibrate) navigator.vibrate(100);
+  closeScanner();
+  if(scannerMode==='job'){
+    $('jobInput').value = qrData; currentJob = qrData;
+    showToast('Job scanned: '+qrData,'success'); checkReadyState();
+  }else if(scannerMode==='resume'){
+    loadResumeData(qrData);
+  }else{
+    processPartScan(qrData);
+  }
+}
+
+/* ============================
+   Resume
+============================ */
+function loadResumeData(qrData){
+  try{
+    const resumeData = JSON.parse(qrData);
+    if(!resumeData.assembly || !resumeData.job || !resumeData.issuedParts){
+      showToast('Invalid resume QR code','error'); return;
+    }
+    currentAssembly = resumeData.assembly;
+    currentJob = resumeData.job;
+    issuedParts = resumeData.issuedParts;
+    $('assemblySelect').value=currentAssembly; $('jobInput').value=currentJob;
+    if(BOM_DATA[currentAssembly]){ currentBOM=BOM_DATA[currentAssembly]; initializeJob(); showToast('✓ Partial pick resumed!','success'); }
+    else{ showToast('Assembly not found in system','error'); resetJob(); }
+  }catch(e){
+    console.error(e); showToast('Failed to load resume data','error');
+  }
+}
+
+/* ============================
+   Scan processing (EP serial prompt)
+============================ */
+function processPartScan(qrData){
+  // Expected: partNumber;revision;lot;bin;location
+  const parts = qrData.split(';').map(s=>s.trim());
+  if(parts.length < 2){ showToast('Invalid QR code format','error'); return; }
+  const [partNumber, scannedRevision, lotRaw = '', bin = '', location = ''] = parts;
+
+  const bomPart = currentBOM.find(p=>p.partNumber===partNumber);
+  if(!bomPart){ showToast(`Part ${partNumber} not in BOM`,'error'); return; }
+
+  const key = `${bomPart.partNumber}-${bomPart.revision}`;
+  if(!issuedParts[key]) issuedParts[key] = [];
+
+  const qtyRequired = Number(bomPart.qtyRequired) || 0;
+  const issuedQty = sumIssuedQty(key);
+  const remainingNeeded = qtyRequired - issuedQty;
+  if(remainingNeeded <= 0){
+    showToast(`Already have ${formatQty(qtyRequired)} of ${partNumber}`,'info'); return;
+  }
+
+  let qtyToAdd = 1;
+  const uom = String(bomPart.uom || '').toUpperCase();
+  if(uom === 'EA'){
+    if(qtyRequired > 1){
+      const input = prompt(`Enter quantity to issue (1-${formatQty(remainingNeeded)} EA):`, formatQty(remainingNeeded));
+      if(input === null) return;
+      const parsed = parseInt(String(input).trim(), 10);
+      if(!parsed || parsed <= 0){
+        showToast('Invalid quantity','error'); return;
+      }
+      if(parsed > remainingNeeded){
+        showToast(`Quantity exceeds remaining (${formatQty(remainingNeeded)})`,'error'); return;
+      }
+      qtyToAdd = parsed;
+    }else{
+      qtyToAdd = 1;
+    }
+  }else{
+    qtyToAdd = remainingNeeded;
+  }
+
+  // EP detection + optional serial prompt (matches EP anywhere e.g., ICA6R-EP-2114)
+  const lot = lotRaw || '';
+  let serial = '';
+  const up = lot.toUpperCase();
+  const isEP = /\bEP\b/.test(up) || up.includes('-EP-') || up.endsWith('EP') || up.startsWith('EP');
+  if(isEP){
+    serial = (prompt('EP detected. Enter Serial Number (optional):','') || '').trim();
+  }
+
+  issuedParts[key].push({
+    scannedRevision,
+    bomRevision: bomPart.revision,
+    lot,
+    location,
+    bin,
+    serial,
+    ep: !!isEP,
+    qty: qtyToAdd,
+    scannedAt: Date.now()
+  });
+
+  const remaining = qtyRequired - (issuedQty + qtyToAdd);
+  const revInfo = scannedRevision !== bomPart.revision ? ` (REV ${scannedRevision}, BOM calls for ${bomPart.revision})` : '';
+  if(remaining>0) showToast(`✓ ${partNumber}${revInfo} scanned (${formatQty(remaining)} more needed)`,'success');
+  else showToast(`✓ ${partNumber} complete!`,'success');
+
+  renderPartsList();
+  updateProgress();
+}
+  
+/* ============================================================
+   Messages
+   ============================================================ */
+function showToast(message, type='info'){
+  const t = $('toast');
+  t.textContent = message;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+/* ============================================================
+   Resume QR
+   ============================================================ */
+function buildResumeData(){
+  return {
+    assembly: currentAssembly,
+    job: currentJob,
+    issuedParts: issuedParts,
+    timestamp: Date.now()
+  };
+}
+function updateResumeQr(){
+  const section = $('resumeQrSection');
+  const target = $('resumeQr');
+  if(!section || !target) return;
+  if(!currentAssembly || !currentJob){
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+  try{
+    target.innerHTML = '';
+    const data = JSON.stringify(buildResumeData());
+    resumeQrInstance = new QRCode(target, {
+      text: data,
+      width: 180,
+      height: 180,
+      colorDark: "#000",
+      colorLight: "#fff",
+      correctLevel: QRCode.CorrectLevel.L
+    });
+  }catch(err){
+    console.error("Resume QR generation failed", err);
+    section.style.display = 'none';
+  }
+}
+
+/* ============================================================
+   Reset / Complete job actions
+   ============================================================ */
+function resetJob(){
+  if(!confirm('Reset this job? All scanned parts will be cleared.')) return;
+  currentAssembly = null;
+  currentJob = null;
+  currentBOM = [];
+  issuedParts = {};
+  $('assemblySelect').value='';
+  $('jobInput').value='';
+  $('partsCard').style.display='none';
+  $('bottomActions').style.display='none';
+  $('resumeQrSection').style.display='none';
+  showToast('Job reset','info');
+}
+
+function completeJob(){
+  const stats = computePickStats();
+  generatePicklistReport(stats.isPartial, stats.missingParts, stats.totalIssued, stats.totalRequired);
+}
+
+function computePickStats(){
+  let totalRequired = 0;
+  let totalIssued = 0;
+  let missingParts = [];
+
+  currentBOM.forEach(part => {
+    const key = `${part.partNumber}-${part.revision}`;
+    const issued = issuedParts[key] || [];
+    const qtyIssued = sumIssuedQty(key);
+
+    totalRequired += Number(part.qtyRequired) || 0;
+    totalIssued += qtyIssued;
+
+    if(qtyIssued < (Number(part.qtyRequired) || 0)){
+      missingParts.push({
+        ...part,
+        qtyIssued,
+        qtyMissing: (Number(part.qtyRequired) || 0) - qtyIssued
+      });
+    }
+  });
+
+  return {
+    totalRequired,
+    totalIssued,
+    missingParts,
+    isPartial: missingParts.length > 0
+  };
+}
+
+/* ============================================================
+   PICKLIST REPORT GENERATION
+   (Matches layout you provided)
+   ============================================================ */
+async function generatePicklistReport(isPartial, missingParts, totalIssued, totalRequired){
+  let qrDataUrl = '';
+
+  // For partial picks, build resume QR
+  if(isPartial){
+    try{
+      const resumeData = {
+        assembly: currentAssembly,
+        job: currentJob,
+        issuedParts: issuedParts,
+        timestamp: Date.now()
+      };
+
+      const temp = document.createElement('div');
+      new QRCode(temp, {
+        text: JSON.stringify(resumeData),
+        width: 220,
+        height: 220,
+        colorDark: "#000",
+        colorLight: "#fff",
+        correctLevel: QRCode.CorrectLevel.L
+      });
+
+      await new Promise(r => setTimeout(r, 120));
+      const canvas = temp.querySelector('canvas');
+      if(canvas) qrDataUrl = canvas.toDataURL('image/png');
+    }catch(err){
+      console.error("QR generation failed", err);
+    }
+  }
+
+  // Build part rows
+  let rowsHTML = '';
+  currentBOM.forEach((part, idx) => {
+    const key = `${part.partNumber}-${part.revision}`;
+    const scans = issuedParts[key] || [];
+    const qtyPicked = Math.min(sumIssuedQty(key), Number(part.qtyRequired) || 0);
+
+    let lotLines = scans.map(scan => {
+      return `
+        <div class="lot-line">
+          <span class="label">Lot/SN:</span> ${scan.lot || 'N/A'}
+          ${scan.serial ? ` | SN: ${scan.serial}` : ''}
+          &nbsp;&nbsp;
+          <span class="label">Qty:</span> ${formatQty(scan.qty ?? 1)}
+          &nbsp;&nbsp;
+          <span class="label">Location:</span> ${scan.location || 'N/A'}
+          &nbsp;&nbsp;
+          <span class="label">Bin:</span> ${scan.bin || 'N/A'}
+          &nbsp;&nbsp;
+          <span class="label">Date:</span> ${new Date().toLocaleDateString()}
+          &nbsp;&nbsp;
+          <span class="label">Init:</span> ${INITIALS}
+        </div>
+      `;
+    }).join('');
+
+    if(lotLines === ''){
+      lotLines = `
+        <div class="lot-line">
+          <span class="label">Lot/SN:</span> —
+          &nbsp;&nbsp;
+          <span class="label">Date:</span> ${new Date().toLocaleDateString()}
+          &nbsp;&nbsp;
+          <span class="label">Init:</span> ${INITIALS}
+        </div>`;
+    }
+
+    rowsHTML += `
+      <div class="row-sep"></div>
+      <table>
+        <tr>
+          <td class="mono" style="width:160px;font-weight:bold;">${part.partNumber}</td>
+          <td class="mono" style="width:40px;">${part.revision}</td>
+          <td class="mono" style="width:40px;">${part.uom || 'EA'}</td>
+          <td class="mono" style="width:70px;">0000${idx+1}</td>
+          <td style="width:90px;">First Op</td>
+          <td class="mono" style="width:90px;text-align:right;">${Number(part.qtyRequired).toFixed(3)}</td>
+          <td class="mono" style="width:90px;text-align:right;">${Number(qtyPicked).toFixed(3)}</td>
+        </tr>
+        <tr>
+          <td colspan="7">
+            <div class="lot-line">
+              <span class="label">Description:</span> ${part.description}
+            </div>
+            <div class="lot-line">
+              <span class="label">BOM Item #:</span> 0000${idx+1}
+            </div>
+            ${lotLines}
+          </td>
+        </tr>
+      </table>
+    `;
+  });
+
+  const parts = currentAssembly.split(" REV ");
+  const assemblyPN = parts[0] || '';
+  const assemblyRev = parts[1] || '';
+
+  const dateStr = new Date().toLocaleDateString();
+  const timeStr = new Date().toLocaleTimeString();
+
+  // Partial block
+  const pctPicked = totalRequired ? Math.round((totalIssued/totalRequired)*100) : 0;
+  const partialHTML = isPartial ? `
+    <div style="margin-top:12px; padding:10px; border:1px dashed #777;">
+      <b>Partial Pick Summary</b><br>
+      Progress: ${formatQty(totalIssued)} / ${formatQty(totalRequired)} parts (${pctPicked}%)<br>
+      ${qrDataUrl ? `<img src="${qrDataUrl}" style="margin-top:10px; width:200px;">` : ''}
+    </div>
+  ` : `
+    <div style="margin-top:12px; padding:10px; background:#e8f5e9; border:1px solid #cfe8cf;">
+      <b style="color:#107c10;">Pick Complete</b><br>
+      All required parts have been picked.
+    </div>
+  `;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Job Order Pick List - ${currentJob}</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#000;padding:18px;}
+    .picklist .header{display:flex;justify-content:space-between;align-items:flex-start;}
+    .brand{font-weight:700;}
+    .title{flex:1;text-align:center;font-weight:700;font-size:18px;}
+    .meta-right{text-align:right;font-size:11px;}
+    table{width:100%;border-collapse:collapse;margin-top:6px;}
+    th{border-bottom:1px solid #000;padding:6px;font-size:11px;}
+    td{padding:6px;vertical-align:top;}
+    .mono{font-family:monospace;}
+    .row-sep{border-top:1px dashed #999;margin:14px 0;}
+    .lot-line{font-size:11px;margin-left:8px;}
+    .label{color:#444;}
+    .footer{text-align:center;margin-top:20px;font-size:11px;color:#444;}
+    .bar{border-top:2px solid #000;border-bottom:1px solid #000;padding:6px 0;margin:8px 0;}
+  </style>
+</head>
+<body>
+  <div class="picklist">
+
+    <div class="header">
+      <div class="brand">AeroMotion</div>
+      <div class="title">Job Order Pick List</div>
+      <div class="meta-right">
+        Page: 1 of 1<br>
+        Date: ${dateStr}<br>
+        Time: ${timeStr}<br>
+        Dept: JO ISSUES
+      </div>
+    </div>
+
+    <div style="margin-top:8px;font-size:13px;">
+      <b>Facility Default</b><br>
+      Job Order: <b>${currentJob}</b>
+    </div>
+
+    <div class="bar"></div>
+
+    <table>
+      <tr>
+        <th>Job Part Number</th>
+        <th>Rev</th>
+        <th>UIM</th>
+        <th>Used In Op #</th>
+        <th style="text-align:right;">Job Order Qty</th>
+        <th>Date Needed</th>
+      </tr>
+      <tr>
+        <td class="mono">${assemblyPN}</td>
+        <td class="mono">${assemblyRev}</td>
+        <td class="mono">EA</td>
+        <td>—</td>
+        <td class="mono" style="text-align:right;">1.000</td>
+        <td>${dateStr}</td>
+      </tr>
+    </table>
+
+    <div class="bar"></div>
+
+    ${rowsHTML}
+
+    ${partialHTML}
+
+    <div class="footer">
+      Issued by: <b>${INITIALS}</b> on ${dateStr} ${timeStr}<br>
+      Generated by Parts Issuance System
+    </div>
+  </div>
+
+  <script>window.onload = ()=>window.print();<\/script>
+</body>
+</html>
+  `;
+
+  printReport(html);
+}
+
+/* ============================================================
+   Report printing helper
+   ============================================================ */
+function printReport(html){
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+}
+
+/* ============================================================
+   CSV Export
+   ============================================================ */
+function getPickedScansArray(){
+  const rows = [];
+  const bomByKey = {};
+  const bomByPart = {};
+
+  currentBOM.forEach(p => {
+    const key = `${p.partNumber}-${p.revision}`;
+    bomByKey[key] = p;
+    bomByPart[p.partNumber] = p;
+  });
+
+  Object.keys(issuedParts).forEach(key => {
+    const scans = issuedParts[key] || [];
+    scans.forEach((scan, idx) => {
+      const partNumber = key.slice(0, key.lastIndexOf('-'));
+      const description = bomByKey[key]?.description || bomByPart[partNumber]?.description || '';
+
+      rows.push({
+        Job: currentJob || '',
+        Assembly: currentAssembly || '',
+        PartNumber: partNumber,
+        BOM_Revision: scan.bomRevision,
+        Scanned_Revision: scan.scannedRevision,
+        Description: description,
+        Qty_Issued: formatQty(scan.qty ?? 1),
+        Lot: scan.lot || '',
+        Serial: scan.serial || '',
+        Bin: scan.bin || '',
+        Location: scan.location || '',
+        ScannedAt: new Date(scan.scannedAt).toLocaleString(),
+        ScanNum: idx + 1
+      });
+    });
+  });
+
+  return rows;
+}
+
+function exportPickedToCSV(){
+  const rows = getPickedScansArray();
+  if(rows.length === 0){
+    showToast("No parts picked to export", "info");
+    return;
+  }
+
+  const headers = Object.keys(rows[0]);
+  const escape = (v) => `"${String(v).replace(/"/g,'""')}"`;
+
+  const csv = [
+    headers.join(','),
+    ...rows.map(r => headers.map(h => escape(r[h])).join(','))
+  ].join('\n');
+
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Picked_${currentJob}_${Date.now()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  showToast("CSV exported", "success");
+}
+
+/* ============================================================
+   BOM Upload (CSV / JSON)
+   ============================================================ */
+function handleBomFileSelected(e){
+  const file = e.target.files[0];
+  if(!file) return;
+
+  const ext = file.name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    try {
+      let parts = [];
+
+      if(ext === 'json'){
+        const arr = JSON.parse(reader.result);
+        if(!Array.isArray(arr)) throw new Error("JSON must be an array");
+        parts = normalizePartsArray(arr);
+      } else {
+        parts = parseCsvToParts(reader.result);
+      }
+
+      if(parts.length === 0){
+        showToast("No valid rows in file", "error");
+        return;
+      }
+
+      const defaultName = file.name.replace(/\.[^/.]+$/, '');
+      const name = prompt("Name this BOM:", defaultName) || defaultName;
+
+      BOM_DATA[name] = parts;
+      addAssemblyOptionIfMissing(name);
+
+      $('assemblySelect').value = name;
+      currentAssembly = name;
+      currentBOM = parts;
+
+      initializeJob();
+      showToast("BOM loaded successfully","success");
+
+    } catch(err){
+      console.error(err);
+      showToast("Failed to load BOM: " + err.message, "error");
+    } finally {
+      e.target.value = '';
+    }
+  };
+
+  reader.readAsText(file);
+}
+
+function addAssemblyOptionIfMissing(name){
+  const sel = $('assemblySelect');
+  if(![...sel.options].some(o => o.value === name)){
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  }
+}
+
+function parseCsvToParts(text){
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+  if(lines.length < 2) return [];
+
+  const headers = splitCsvLine(lines[0]).map(h => h.trim().toLowerCase());
+  const idxPN = headers.indexOf("partnumber");
+  const idxRev = headers.indexOf("revision");
+  const idxDesc = headers.indexOf("description");
+  const idxUom = headers.indexOf("uom");
+  const idxQty = headers.indexOf("qtyrequired");
+
+  if(idxPN < 0 || idxRev < 0 || idxDesc < 0 || idxUom < 0 || idxQty < 0){
+    throw new Error("Required columns: partNumber, revision, description, uom, qtyRequired");
+  }
+
+  const parts = [];
+  for(let i=1;i<lines.length;i++){
+    const cols = splitCsvLine(lines[i]);
+    if(cols.length < headers.length) continue;
+
+    const partNumber = cols[idxPN]?.trim();
+    const revision = cols[idxRev]?.trim();
+    const description = cols[idxDesc]?.trim();
+    const uom = cols[idxUom]?.trim();
+    const qty = parseFloat(cols[idxQty]?.trim());
+
+    if(!partNumber || !revision || !description || !uom || isNaN(qty)) continue;
+
+    parts.push({
+      partNumber,
+      revision,
+      description,
+      uom,
+      qtyRequired: qty
+    });
+  }
+
+  return parts;
+}
+
+function splitCsvLine(line){
+  const out = [];
+  let cur = "";
+  let q = false;
+
+  for(let i=0;i<line.length;i++){
+    const c = line[i];
+    if(c === '"'){
+      if(q && line[i+1] === '"'){ cur += '"'; i++; }
+      else q = !q;
+    } else if(c === ',' && !q){
+      out.push(cur);
+      cur = "";
+    } else {
+      cur += c;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+function normalizePartsArray(arr){
+  const out=[];
+  arr.forEach(o=>{
+    const partNumber=(o.partNumber||o.PartNumber||"").trim();
+    const revision  =(o.revision||o.Revision||"").trim();
+    const description=(o.description||o.Description||"").trim();
+    const uom=(o.uom||o.UOM||o.Uom||"").trim();
+    const qty=parseFloat((o.qtyRequired||o.QtyRequired||o.qty||o.Qty||"0").toString());
+    if(!partNumber || !revision || !description || !uom || isNaN(qty)) return;
+    out.push({ partNumber, revision, description, uom, qtyRequired: qty });
+  });
+  return out;
+}
+
+</script>
