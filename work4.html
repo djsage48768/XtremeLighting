@@ -934,32 +934,24 @@ function computePickStats(){
 async function generatePicklistReport(isPartial, missingParts, totalIssued, totalRequired){
   let qrDataUrl = '';
 
-  // For partial picks, build resume QR
-  if(isPartial){
-    try{
-      const resumeData = {
-        assembly: currentAssembly,
-        job: currentJob,
-        issuedParts: issuedParts,
-        timestamp: Date.now()
-      };
+  // Build resume QR for report
+  try{
+    const resumeData = buildResumeData();
+    const temp = document.createElement('div');
+    new QRCode(temp, {
+      text: JSON.stringify(resumeData),
+      width: 220,
+      height: 220,
+      colorDark: "#000",
+      colorLight: "#fff",
+      correctLevel: QRCode.CorrectLevel.L
+    });
 
-      const temp = document.createElement('div');
-      new QRCode(temp, {
-        text: JSON.stringify(resumeData),
-        width: 220,
-        height: 220,
-        colorDark: "#000",
-        colorLight: "#fff",
-        correctLevel: QRCode.CorrectLevel.L
-      });
-
-      await new Promise(r => setTimeout(r, 120));
-      const canvas = temp.querySelector('canvas');
-      if(canvas) qrDataUrl = canvas.toDataURL('image/png');
-    }catch(err){
-      console.error("QR generation failed", err);
-    }
+    await new Promise(r => setTimeout(r, 120));
+    const canvas = temp.querySelector('canvas');
+    if(canvas) qrDataUrl = canvas.toDataURL('image/png');
+  }catch(err){
+    console.error("QR generation failed", err);
   }
 
   // Build part rows
@@ -1000,19 +992,20 @@ async function generatePicklistReport(isPartial, missingParts, totalIssued, tota
     }
 
     rowsHTML += `
-      <div class="row-sep"></div>
-      <table>
+      <div class="dash"></div>
+      <table class="lines">
         <tr>
           <td class="mono" style="width:160px;font-weight:bold;">${part.partNumber}</td>
-          <td class="mono" style="width:40px;">${part.revision}</td>
-          <td class="mono" style="width:40px;">${part.uom || 'EA'}</td>
+          <td class="mono" style="width:34px;">${part.revision}</td>
+          <td class="mono" style="width:34px;">${part.uom || 'EA'}</td>
           <td class="mono" style="width:70px;">0000${idx+1}</td>
-          <td style="width:90px;">First Op</td>
-          <td class="mono" style="width:90px;text-align:right;">${Number(part.qtyRequired).toFixed(3)}</td>
-          <td class="mono" style="width:90px;text-align:right;">${Number(qtyPicked).toFixed(3)}</td>
+          <td style="width:80px;">First Op</td>
+          <td style="width:80px;">${dateStr}</td>
+          <td class="mono" style="width:90px;text-align:right;">${formatQty(part.qtyRequired)}</td>
+          <td class="mono" style="width:90px;text-align:right;">${formatQty(qtyPicked)}</td>
         </tr>
         <tr>
-          <td colspan="7">
+          <td colspan="8">
             <div class="lot-line">
               <span class="label">Description:</span> ${part.description}
             </div>
@@ -1055,20 +1048,24 @@ async function generatePicklistReport(isPartial, missingParts, totalIssued, tota
   <meta charset="utf-8">
   <title>Job Order Pick List - ${currentJob}</title>
   <style>
-    body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#000;padding:18px;}
+    body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#000;padding:18px;}
     .picklist .header{display:flex;justify-content:space-between;align-items:flex-start;}
     .brand{font-weight:700;}
     .title{flex:1;text-align:center;font-weight:700;font-size:18px;}
-    .meta-right{text-align:right;font-size:11px;}
+    .meta-right{text-align:right;font-size:10px;white-space:nowrap;}
     table{width:100%;border-collapse:collapse;margin-top:6px;}
-    th{border-bottom:1px solid #000;padding:6px;font-size:11px;}
-    td{padding:6px;vertical-align:top;}
+    th{border-bottom:1px solid #000;padding:6px 4px;font-size:10px;text-align:left;}
+    td{padding:4px;vertical-align:top;}
     .mono{font-family:monospace;}
-    .row-sep{border-top:1px dashed #999;margin:14px 0;}
-    .lot-line{font-size:11px;margin-left:8px;}
+    .dash{border-top:1px dashed #999;margin:12px 0;}
+    .lot-line{font-size:10px;margin-left:8px;}
     .label{color:#444;}
-    .footer{text-align:center;margin-top:20px;font-size:11px;color:#444;}
+    .footer{text-align:center;margin-top:18px;font-size:10px;color:#444;}
     .bar{border-top:2px solid #000;border-bottom:1px solid #000;padding:6px 0;margin:8px 0;}
+    .jobline{display:flex;gap:12px;margin-top:6px;font-size:11px;}
+    .jobline .grow{flex:1;}
+    .lines{margin-bottom:8px;}
+    .qr-wrap{margin-top:12px;text-align:center;}
   </style>
 </head>
 <body>
@@ -1085,7 +1082,7 @@ async function generatePicklistReport(isPartial, missingParts, totalIssued, tota
       </div>
     </div>
 
-    <div style="margin-top:8px;font-size:13px;">
+    <div style="margin-top:8px;font-size:12px;">
       <b>Facility Default</b><br>
       Job Order: <b>${currentJob}</b>
     </div>
@@ -1097,8 +1094,8 @@ async function generatePicklistReport(isPartial, missingParts, totalIssued, tota
         <th>Job Part Number</th>
         <th>Rev</th>
         <th>UIM</th>
-        <th>Used In Op #</th>
-        <th style="text-align:right;">Job Order Qty</th>
+        <th>Used In Oper</th>
+        <th style="text-align:right;">Job Order Quantity</th>
         <th>Date Needed</th>
       </tr>
       <tr>
@@ -1113,9 +1110,28 @@ async function generatePicklistReport(isPartial, missingParts, totalIssued, tota
 
     <div class="bar"></div>
 
+    <table>
+      <tr>
+        <th>Part Number</th>
+        <th>Rev</th>
+        <th>UIM</th>
+        <th>Item #</th>
+        <th>Used In Oper</th>
+        <th>Date Needed</th>
+        <th style="text-align:right;">Quantity Required</th>
+        <th style="text-align:right;">Quantity Picked</th>
+      </tr>
+    </table>
     ${rowsHTML}
 
     ${partialHTML}
+
+    ${qrDataUrl ? `
+      <div class="qr-wrap">
+        <div style="font-size:10px;margin-bottom:6px;">Scan to resume or edit this picklist</div>
+        <img src="${qrDataUrl}" style="width:200px;">
+      </div>
+    ` : ''}
 
     <div class="footer">
       Issued by: <b>${INITIALS}</b> on ${dateStr} ${timeStr}<br>
